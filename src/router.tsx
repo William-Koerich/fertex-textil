@@ -12,6 +12,8 @@ import ProdutoFormPage from '@/features/vendedor/ProdutoFormPage'
 import VitrinePage from '@/features/comprador/VitrinePage'
 import ProdutoDetalhePage from '@/features/comprador/ProdutoDetalhePage'
 import CarrinhoPage from '@/features/comprador/CarrinhoPage'
+import PedidosPage from '@/features/comprador/PedidosPage'
+import VendasPage from '@/features/vendedor/VendasPage'
 
 function Placeholder({ title }: { title: string }) {
   return <PageHeader title={title} subtitle="Em construção" />
@@ -45,7 +47,7 @@ export const router = createBrowserRouter([
           { path: 'produtos', element: <ProdutosPage /> },
           { path: 'produtos/novo', element: <ProdutoFormPage /> },
           { path: 'produtos/:id/editar', element: <ProdutoFormPage /> },
-          { path: 'vendas', element: <Placeholder title="Produtos vendidos" /> },
+          { path: 'vendas', element: <VendasPage /> },
         ],
       },
       {
@@ -58,7 +60,7 @@ export const router = createBrowserRouter([
           { path: 'loja', element: <VitrinePage /> },
           { path: 'loja/:id', element: <ProdutoDetalhePage /> },
           { path: 'carrinho', element: <CarrinhoPage /> },
-          { path: 'pedidos', element: <Placeholder title="Meus pedidos" /> },
+          { path: 'pedidos', element: <PedidosPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },
