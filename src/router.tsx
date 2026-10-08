@@ -3,10 +3,10 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { HomeRedirect, PublicOnly, RequireAuth } from '@/components/ProtectedRoute'
 import { CompradorLayout, VendedorLayout } from '@/components/layout/PerfilLayouts'
-import { PageHeader } from '@/components/ui/PageHeader'
 import LoginPage from '@/features/auth/LoginPage'
 import SignupPage from '@/features/auth/SignupPage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import { LoadingState } from '@/components/ui/Spinner'
 import ProdutosPage from '@/features/vendedor/ProdutosPage'
 import ProdutoFormPage from '@/features/vendedor/ProdutoFormPage'
 import VitrinePage from '@/features/comprador/VitrinePage'
@@ -14,10 +14,6 @@ import ProdutoDetalhePage from '@/features/comprador/ProdutoDetalhePage'
 import CarrinhoPage from '@/features/comprador/CarrinhoPage'
 import PedidosPage from '@/features/comprador/PedidosPage'
 import VendasPage from '@/features/vendedor/VendasPage'
-
-function Placeholder({ title }: { title: string }) {
-  return <PageHeader title={title} subtitle="Em construção" />
-}
 
 function Root() {
   return (
@@ -43,7 +39,12 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
         children: [
-          { path: 'painel', element: <Placeholder title="Painel" /> },
+          {
+            path: 'painel',
+            // Recharts é pesado: só é baixado quando o vendedor abre o painel
+            lazy: () => import('@/features/vendedor/DashboardPage').then((m) => ({ Component: m.default })),
+            hydrateFallbackElement: <LoadingState />,
+          },
           { path: 'produtos', element: <ProdutosPage /> },
           { path: 'produtos/novo', element: <ProdutoFormPage /> },
           { path: 'produtos/:id/editar', element: <ProdutoFormPage /> },

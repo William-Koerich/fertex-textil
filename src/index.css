@@ -26,9 +26,18 @@
   }
   :root {
     color-scheme: light;
+    /* Cores dos gráficos (validadas: faixa de luminosidade e contraste com a superfície) */
+    --chart-accent: #4f46e5;
+    --chart-grid: #e2e8f0;
+    --chart-axis: #64748b;
+    --chart-surface: #ffffff;
   }
   :root.dark {
     color-scheme: dark;
+    --chart-accent: #7c7ff5;
+    --chart-grid: #1e293b;
+    --chart-axis: #94a3b8;
+    --chart-surface: #0f172a;
   }
 }
 
