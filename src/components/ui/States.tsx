@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { PackageOpen, TriangleAlert } from 'lucide-react'
+import { PackageOpen, TriangleAlert, WifiOff } from 'lucide-react'
+import { useOnline } from '@/lib/pwa'
+import { MSG_SEM_CONEXAO } from '@/lib/errors'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from './Button'
 
@@ -25,6 +28,34 @@ export function EmptyState({
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const online = useOnline()
+
+  // Ao voltar a conexão, tenta de novo automaticamente
+  useEffect(() => {
+    if (!onRetry) return
+    window.addEventListener('online', onRetry)
+    return () => window.removeEventListener('online', onRetry)
+  }, [onRetry])
+
+  // navigator.onLine nem sempre é confiável (ex.: Wi-Fi sem internet): também trata falha de rede como offline
+  if (!online || message === MSG_SEM_CONEXAO)
+    return (
+      <div role="status" className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950">
+          <WifiOff className="h-8 w-8 text-amber-600 dark:text-amber-400" aria-hidden />
+        </div>
+        <h2 className="mt-2 font-semibold">Sem conexão com a internet</h2>
+        <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
+          Não conseguimos carregar estes dados agora. Assim que a conexão voltar, tentaremos de novo automaticamente.
+        </p>
+        {onRetry && (
+          <Button variant="secondary" className="mt-3" onClick={onRetry}>
+            Tentar novamente
+          </Button>
+        )}
+      </div>
+    )
+
   return (
     <div
       role="alert"

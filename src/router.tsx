@@ -7,6 +7,8 @@ import LoginPage from '@/features/auth/LoginPage'
 import SignupPage from '@/features/auth/SignupPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import { LoadingState } from '@/components/ui/Spinner'
+import { OfflineBanner } from '@/components/pwa/OfflineBanner'
+import { UpdatePrompt } from '@/components/pwa/UpdatePrompt'
 import ProdutosPage from '@/features/vendedor/ProdutosPage'
 import ProdutoFormPage from '@/features/vendedor/ProdutoFormPage'
 import VitrinePage from '@/features/comprador/VitrinePage'
@@ -19,7 +21,9 @@ function Root() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <OfflineBanner />
         <Outlet />
+        <UpdatePrompt />
       </ToastProvider>
     </AuthProvider>
   )

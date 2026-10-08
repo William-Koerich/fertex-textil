@@ -25,6 +25,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function lerPerfilSalvo(chave: string): Profile | null {
+  try {
+    const v = localStorage.getItem(chave)
+    return v ? (JSON.parse(v) as Profile) : null
+  } catch {
+    return null
+  }
+}
+
 export const rotaInicial = (perfil: Perfil) => (perfil === 'vendedor' ? '/painel' : '/loja')
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -64,6 +73,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle()
       .then(({ data, error }) => {
         if (!ativo) return
+        const chave = `fertex-perfil:${userId}`
+        if (error) {
+          // Offline: usa o perfil salvo no aparelho para o app continuar abrindo
+          const salvo = lerPerfilSalvo(chave)
+          if (salvo) {
+            setProfile(salvo)
+            setProfileError(null)
+            setProfileUserId(userId)
+            return
+          }
+        } else if (data) {
+          try {
+            localStorage.setItem(chave, JSON.stringify(data))
+          } catch {
+            /* ignora */
+          }
+        }
         setProfile((data as Profile | null) ?? null)
         setProfileError(
           error

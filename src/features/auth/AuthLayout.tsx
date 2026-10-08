@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
+import { InstallButton } from '@/components/pwa/InstallButton'
 
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
       <div className="mb-8 flex flex-col items-center gap-3 text-center">
         <img src="/favicon.svg" alt="" className="h-14 w-14" />
         <div>
@@ -17,6 +18,9 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         <p className="mt-1 mb-6 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
         {children}
       </div>
-    </div>
+      <div className="mt-6 w-full max-w-md">
+        <InstallButton />
+      </div>
+    </main>
   )
 }
