@@ -1,11 +1,14 @@
 import { createBrowserRouter, Outlet } from 'react-router'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ToastProvider } from '@/contexts/ToastContext'
 import { HomeRedirect, PublicOnly, RequireAuth } from '@/components/ProtectedRoute'
 import { CompradorLayout, VendedorLayout } from '@/components/layout/PerfilLayouts'
 import { PageHeader } from '@/components/ui/PageHeader'
 import LoginPage from '@/features/auth/LoginPage'
 import SignupPage from '@/features/auth/SignupPage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import ProdutosPage from '@/features/vendedor/ProdutosPage'
+import ProdutoFormPage from '@/features/vendedor/ProdutoFormPage'
 
 function Placeholder({ title }: { title: string }) {
   return <PageHeader title={title} subtitle="Em construção" />
@@ -14,7 +17,9 @@ function Placeholder({ title }: { title: string }) {
 function Root() {
   return (
     <AuthProvider>
-      <Outlet />
+      <ToastProvider>
+        <Outlet />
+      </ToastProvider>
     </AuthProvider>
   )
 }
@@ -34,7 +39,9 @@ export const router = createBrowserRouter([
         ),
         children: [
           { path: 'painel', element: <Placeholder title="Painel" /> },
-          { path: 'produtos', element: <Placeholder title="Meus produtos" /> },
+          { path: 'produtos', element: <ProdutosPage /> },
+          { path: 'produtos/novo', element: <ProdutoFormPage /> },
+          { path: 'produtos/:id/editar', element: <ProdutoFormPage /> },
           { path: 'vendas', element: <Placeholder title="Produtos vendidos" /> },
         ],
       },
