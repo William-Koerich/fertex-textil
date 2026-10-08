@@ -98,12 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
-    // Limpa o carrinho do usuário ao sair
-    try {
-      localStorage.removeItem('fertex-carrinho')
-    } catch {
-      /* ignora */
-    }
   }, [])
 
   const loading = !sessionLoaded || (!!userId && profileUserId !== userId)

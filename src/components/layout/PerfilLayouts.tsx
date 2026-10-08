@@ -1,5 +1,6 @@
 import { ClipboardList, LayoutDashboard, LogOut, Package, Receipt, ShoppingCart, Store } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { CartProvider, useCart } from '@/contexts/CartContext'
 import { IconButton } from '@/components/ui/Button'
 import { AppLayout } from './AppLayout'
 import type { NavItem } from './AppLayout'
@@ -40,11 +41,21 @@ export function VendedorLayout() {
   return <AppLayout items={items} headerActions={<HeaderActions />} sidebarFooter={<SidebarUser />} />
 }
 
-export function CompradorLayout() {
+function CompradorShell() {
+  const { totalItens } = useCart()
   const items: NavItem[] = [
     { to: '/loja', label: 'Loja', icon: Store },
-    { to: '/carrinho', label: 'Carrinho', icon: ShoppingCart },
+    { to: '/carrinho', label: 'Carrinho', icon: ShoppingCart, badge: totalItens },
     { to: '/pedidos', label: 'Pedidos', icon: ClipboardList },
   ]
   return <AppLayout items={items} headerActions={<HeaderActions />} sidebarFooter={<SidebarUser />} />
+}
+
+export function CompradorLayout() {
+  const { profile } = useAuth()
+  return (
+    <CartProvider key={profile!.id} userId={profile!.id}>
+      <CompradorShell />
+    </CartProvider>
+  )
 }

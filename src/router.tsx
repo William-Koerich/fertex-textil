@@ -9,6 +9,9 @@ import SignupPage from '@/features/auth/SignupPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import ProdutosPage from '@/features/vendedor/ProdutosPage'
 import ProdutoFormPage from '@/features/vendedor/ProdutoFormPage'
+import VitrinePage from '@/features/comprador/VitrinePage'
+import ProdutoDetalhePage from '@/features/comprador/ProdutoDetalhePage'
+import CarrinhoPage from '@/features/comprador/CarrinhoPage'
 
 function Placeholder({ title }: { title: string }) {
   return <PageHeader title={title} subtitle="Em construção" />
@@ -52,8 +55,9 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
         children: [
-          { path: 'loja', element: <Placeholder title="Loja" /> },
-          { path: 'carrinho', element: <Placeholder title="Carrinho" /> },
+          { path: 'loja', element: <VitrinePage /> },
+          { path: 'loja/:id', element: <ProdutoDetalhePage /> },
+          { path: 'carrinho', element: <CarrinhoPage /> },
           { path: 'pedidos', element: <Placeholder title="Meus pedidos" /> },
         ],
       },
