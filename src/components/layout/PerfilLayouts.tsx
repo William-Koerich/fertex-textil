@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { CartProvider, useCart } from '@/contexts/CartContext'
 import { IconButton } from '@/components/ui/Button'
 import { InstallButton } from '@/components/pwa/InstallButton'
+import { ThemeSegmented, ThemeToggleButton } from '@/components/ThemeToggle'
 import { AppLayout } from './AppLayout'
 import type { NavItem } from './AppLayout'
 
@@ -11,6 +12,7 @@ function SidebarUser() {
   return (
     <>
       <InstallButton />
+      <ThemeSegmented />
       <div className="mt-4 flex items-center gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 dark:bg-brand-900 dark:text-brand-200">
           {profile?.nome.charAt(0).toUpperCase()}
@@ -32,6 +34,7 @@ function HeaderActions() {
   return (
     <>
       <InstallButton variant="icon" />
+      <ThemeToggleButton />
       <IconButton onClick={signOut} aria-label="Sair" title="Sair">
         <LogOut className="h-5 w-5" />
       </IconButton>

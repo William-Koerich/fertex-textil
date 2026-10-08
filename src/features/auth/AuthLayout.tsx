@@ -1,9 +1,13 @@
 import type { ReactNode } from 'react'
 import { InstallButton } from '@/components/pwa/InstallButton'
+import { ThemeToggleButton } from '@/components/ThemeToggle'
 
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-10">
+      <div className="absolute top-3 right-3">
+        <ThemeToggleButton />
+      </div>
       <div className="mb-8 flex flex-col items-center gap-3 text-center">
         <img src="/favicon.svg" alt="" className="h-14 w-14" />
         <div>

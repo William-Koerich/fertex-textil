@@ -1,11 +1,13 @@
 import { createBrowserRouter, Outlet } from 'react-router'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ToastProvider } from '@/contexts/ToastContext'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 import { HomeRedirect, PublicOnly, RequireAuth } from '@/components/ProtectedRoute'
 import { CompradorLayout, VendedorLayout } from '@/components/layout/PerfilLayouts'
 import LoginPage from '@/features/auth/LoginPage'
 import SignupPage from '@/features/auth/SignupPage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import RouteErrorPage from '@/pages/RouteErrorPage'
 import { LoadingState } from '@/components/ui/Spinner'
 import { OfflineBanner } from '@/components/pwa/OfflineBanner'
 import { UpdatePrompt } from '@/components/pwa/UpdatePrompt'
@@ -19,19 +21,22 @@ import VendasPage from '@/features/vendedor/VendasPage'
 
 function Root() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <OfflineBanner />
-        <Outlet />
-        <UpdatePrompt />
-      </ToastProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <OfflineBanner />
+          <Outlet />
+          <UpdatePrompt />
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
 export const router = createBrowserRouter([
   {
     element: <Root />,
+    errorElement: <RouteErrorPage />,
     children: [
       { index: true, element: <HomeRedirect /> },
       { path: 'entrar', element: <PublicOnly><LoginPage /></PublicOnly> },

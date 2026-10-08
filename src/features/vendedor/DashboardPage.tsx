@@ -23,15 +23,16 @@ const PERIODOS = [7, 30, 90] as const
 const card = 'rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900'
 
 function Delta({ atual, anterior, dias }: { atual: number; anterior: number; dias: number }) {
+  const titulo = `Comparado aos ${dias} dias anteriores`
   if (anterior === 0) return null
   const pct = ((atual - anterior) / anterior) * 100
   const sobe = pct >= 0
   const Icone = sobe ? ArrowUpRight : ArrowDownRight
   return (
-    <p className={`mt-1 inline-flex items-center gap-0.5 text-xs font-medium ${sobe ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
+    <p title={titulo} className={`mt-1 inline-flex items-center gap-0.5 text-xs font-medium ${sobe ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
       <Icone className="h-3.5 w-3.5" aria-hidden />
       {sobe ? '+' : ''}
-      {pct.toFixed(0)}% <span className="font-normal text-slate-500 dark:text-slate-400">vs. {dias} dias anteriores</span>
+      {pct.toFixed(0)}% <span className="font-normal text-slate-500 dark:text-slate-400">vs. anterior</span>
     </p>
   )
 }
@@ -115,7 +116,7 @@ function GraficoFaturamento({ d, dias }: { d: Dashboard; dias: number }) {
             />
             <Tooltip content={<TooltipFaturamento />} cursor={{ stroke: 'var(--chart-axis)', strokeWidth: 1 }} />
             <Area
-              type="monotone"
+              type="linear"
               dataKey="faturamento"
               stroke="var(--chart-accent)"
               strokeWidth={2}

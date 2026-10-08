@@ -17,7 +17,7 @@
       try {
         var t = localStorage.getItem('fertex-tema')
         if (t === 'escuro' || (t !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches))
-          document.documentElement.classList.add('dark')
+          document.documentElement.classList.add('dark'), document.querySelector('meta[name=theme-color]').setAttribute('content', '#0f172a')
       } catch (e) {}
     </script>
   </head>
