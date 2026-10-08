@@ -1,0 +1,538 @@
+{
+  "id": "a34554f1-46a7-4285-bc74-4564ee665922",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.fertex_itens_pedido": {
+      "name": "fertex_itens_pedido",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "pedido_id": {
+          "name": "pedido_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "produto_id": {
+          "name": "produto_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendedor_id": {
+          "name": "vendedor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantidade": {
+          "name": "quantidade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "preco_unitario": {
+          "name": "preco_unitario",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "fertex_itens_pedido_pedido_idx": {
+          "name": "fertex_itens_pedido_pedido_idx",
+          "columns": [
+            {
+              "expression": "pedido_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "fertex_itens_pedido_vendedor_idx": {
+          "name": "fertex_itens_pedido_vendedor_idx",
+          "columns": [
+            {
+              "expression": "vendedor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "fertex_itens_pedido_produto_idx": {
+          "name": "fertex_itens_pedido_produto_idx",
+          "columns": [
+            {
+              "expression": "produto_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fertex_itens_pedido_pedido_id_fertex_pedidos_id_fk": {
+          "name": "fertex_itens_pedido_pedido_id_fertex_pedidos_id_fk",
+          "tableFrom": "fertex_itens_pedido",
+          "tableTo": "fertex_pedidos",
+          "columnsFrom": [
+            "pedido_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "fertex_itens_pedido_produto_id_fertex_produtos_id_fk": {
+          "name": "fertex_itens_pedido_produto_id_fertex_produtos_id_fk",
+          "tableFrom": "fertex_itens_pedido",
+          "tableTo": "fertex_produtos",
+          "columnsFrom": [
+            "produto_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "fertex_itens_pedido_vendedor_id_fertex_profiles_id_fk": {
+          "name": "fertex_itens_pedido_vendedor_id_fertex_profiles_id_fk",
+          "tableFrom": "fertex_itens_pedido",
+          "tableTo": "fertex_profiles",
+          "columnsFrom": [
+            "vendedor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "fertex_itens_pedido_select": {
+          "name": "fertex_itens_pedido_select",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "vendedor_id = (select auth.uid()) or pedido_id in (select p.id from fertex_pedidos p where p.comprador_id = (select auth.uid()))"
+        }
+      },
+      "checkConstraints": {
+        "fertex_itens_pedido_quantidade_check": {
+          "name": "fertex_itens_pedido_quantidade_check",
+          "value": "\"fertex_itens_pedido\".\"quantidade\" > 0"
+        },
+        "fertex_itens_pedido_preco_check": {
+          "name": "fertex_itens_pedido_preco_check",
+          "value": "\"fertex_itens_pedido\".\"preco_unitario\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.fertex_pedidos": {
+      "name": "fertex_pedidos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "comprador_id": {
+          "name": "comprador_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total": {
+          "name": "total",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "fertex_status_pedido",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'concluido'"
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "fertex_pedidos_comprador_idx": {
+          "name": "fertex_pedidos_comprador_idx",
+          "columns": [
+            {
+              "expression": "comprador_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "criado_em",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "fertex_pedidos_criado_em_idx": {
+          "name": "fertex_pedidos_criado_em_idx",
+          "columns": [
+            {
+              "expression": "criado_em",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fertex_pedidos_comprador_id_fertex_profiles_id_fk": {
+          "name": "fertex_pedidos_comprador_id_fertex_profiles_id_fk",
+          "tableFrom": "fertex_pedidos",
+          "tableTo": "fertex_profiles",
+          "columnsFrom": [
+            "comprador_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "fertex_pedidos_select_comprador": {
+          "name": "fertex_pedidos_select_comprador",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "comprador_id = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.fertex_produtos": {
+      "name": "fertex_produtos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "vendedor_id": {
+          "name": "vendedor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "preco": {
+          "name": "preco",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estoque": {
+          "name": "estoque",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "foto_url": {
+          "name": "foto_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ativo": {
+          "name": "ativo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "fertex_produtos_vendedor_idx": {
+          "name": "fertex_produtos_vendedor_idx",
+          "columns": [
+            {
+              "expression": "vendedor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "fertex_produtos_ativo_idx": {
+          "name": "fertex_produtos_ativo_idx",
+          "columns": [
+            {
+              "expression": "ativo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fertex_produtos_vendedor_id_fertex_profiles_id_fk": {
+          "name": "fertex_produtos_vendedor_id_fertex_profiles_id_fk",
+          "tableFrom": "fertex_produtos",
+          "tableTo": "fertex_profiles",
+          "columnsFrom": [
+            "vendedor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "fertex_produtos_select": {
+          "name": "fertex_produtos_select",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "ativo or vendedor_id = (select auth.uid()) or id in (select i.produto_id from fertex_itens_pedido i)"
+        },
+        "fertex_produtos_insert_vendedor": {
+          "name": "fertex_produtos_insert_vendedor",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "vendedor_id = (select auth.uid()) and exists (select 1 from fertex_profiles p where p.id = (select auth.uid()) and p.perfil = 'vendedor')"
+        },
+        "fertex_produtos_update_dono": {
+          "name": "fertex_produtos_update_dono",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "vendedor_id = (select auth.uid())",
+          "withCheck": "vendedor_id = (select auth.uid())"
+        },
+        "fertex_produtos_delete_dono": {
+          "name": "fertex_produtos_delete_dono",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "vendedor_id = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {
+        "fertex_produtos_preco_check": {
+          "name": "fertex_produtos_preco_check",
+          "value": "\"fertex_produtos\".\"preco\" >= 0"
+        },
+        "fertex_produtos_estoque_check": {
+          "name": "fertex_produtos_estoque_check",
+          "value": "\"fertex_produtos\".\"estoque\" >= 0"
+        },
+        "fertex_produtos_nome_check": {
+          "name": "fertex_produtos_nome_check",
+          "value": "char_length(trim(\"fertex_produtos\".\"nome\")) between 2 and 120"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.fertex_profiles": {
+      "name": "fertex_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "perfil": {
+          "name": "perfil",
+          "type": "fertex_perfil",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fertex_profiles_id_users_id_fk": {
+          "name": "fertex_profiles_id_users_id_fk",
+          "tableFrom": "fertex_profiles",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "fertex_profiles_select_proprio": {
+          "name": "fertex_profiles_select_proprio",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(select auth.uid()) = id"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {
+    "public.fertex_perfil": {
+      "name": "fertex_perfil",
+      "schema": "public",
+      "values": [
+        "vendedor",
+        "comprador"
+      ]
+    },
+    "public.fertex_status_pedido": {
+      "name": "fertex_status_pedido",
+      "schema": "public",
+      "values": [
+        "pendente",
+        "concluido",
+        "cancelado"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
