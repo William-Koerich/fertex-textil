@@ -146,6 +146,9 @@ export default function ProdutosPage() {
                     <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm">
                       <span className="font-semibold">{formatarPrecoPor(p.preco, p.unidade)}</span>
                       <span className="text-slate-500 dark:text-slate-400">Estoque: {formatarQuantidade(p.estoque, p.unidade)}</span>
+                      {(p.quantidade_minima ?? 1) > 1 && (
+                        <span className="text-slate-500 dark:text-slate-400">Mín.: {formatarQuantidade(p.quantidade_minima!, p.unidade)}</span>
+                      )}
                       <StatusBadge produto={p} />
                     </div>
                     <button

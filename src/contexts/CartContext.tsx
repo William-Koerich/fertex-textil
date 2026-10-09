@@ -12,10 +12,13 @@ export interface ItemCarrinho {
   estoque: number
   vendedor_id?: string
   unidade?: Produto['unidade']
+  /** quantidade mínima por pedido (null/ausente = sem mínimo) */
+  quantidade_minima?: number | null
 }
 
 interface CartValue {
   itens: ItemCarrinho[]
+  /** quantidade de produtos diferentes no carrinho (as quantidades têm unidades diferentes) */
   totalItens: number
   subtotal: number
   /** Adiciona respeitando o estoque. Retorna a quantidade efetivamente adicionada. */
@@ -83,7 +86,10 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
 
   const adicionar = useCallback((p: Produto, quantidade = 1) => {
     const atual = itens.find((i) => i.produto_id === p.id)?.quantidade ?? 0
-    const nova = Math.min(p.estoque, atual + quantidade)
+    const minimo = p.quantidade_minima ?? 1
+    // Respeita a quantidade mínima: o primeiro "adicionar" já coloca o mínimo
+    if (p.estoque < minimo) return 0
+    const nova = Math.min(p.estoque, Math.max(minimo, atual + quantidade))
     const adicionada = Math.max(0, nova - atual)
     if (nova <= 0) return 0
     setItens((lista) => {
@@ -96,6 +102,7 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
         estoque: p.estoque,
         vendedor_id: p.vendedor_id,
         unidade: p.unidade,
+        quantidade_minima: p.quantidade_minima,
       }
       return atual ? lista.map((i) => (i.produto_id === p.id ? item : i)) : [...lista, item]
     })
@@ -105,7 +112,9 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
   const alterarQuantidade = useCallback((produtoId: string, quantidade: number) => {
     setItens((lista) =>
       lista.map((i) =>
-        i.produto_id === produtoId ? { ...i, quantidade: Math.max(1, Math.min(i.estoque, Math.floor(quantidade))) } : i,
+        i.produto_id === produtoId
+          ? { ...i, quantidade: Math.max(i.quantidade_minima ?? 1, Math.min(i.estoque, Math.floor(quantidade))) }
+          : i,
       ),
     )
   }, [])
@@ -119,13 +128,13 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
       lista.flatMap((i) => {
         const p = porId.get(i.produto_id)
         if (!p) return [{ ...i, estoque: 0 }]
-        return [{ ...i, nome: p.nome, preco: p.preco, foto_url: p.foto_url, estoque: p.ativo && !p.excluido_em ? p.estoque : 0, vendedor_id: p.vendedor_id, unidade: p.unidade }]
+        return [{ ...i, nome: p.nome, preco: p.preco, foto_url: p.foto_url, estoque: p.ativo && !p.excluido_em ? p.estoque : 0, vendedor_id: p.vendedor_id, unidade: p.unidade, quantidade_minima: p.quantidade_minima }]
       }),
     )
   }, [])
 
   const value = useMemo<CartValue>(() => {
-    const totalItens = itens.reduce((s, i) => s + i.quantidade, 0)
+    const totalItens = itens.length
     const subtotal = itens.reduce((s, i) => s + i.quantidade * i.preco, 0)
     return { itens, totalItens, subtotal, adicionar, alterarQuantidade, remover, limpar, sincronizar }
   }, [itens, adicionar, alterarQuantidade, remover, limpar, sincronizar])

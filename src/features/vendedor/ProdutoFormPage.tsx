@@ -33,12 +33,13 @@ interface Form {
   preco: string
   estoque: string
   unidade: Unidade | ''
+  minimo: string
   categoria: string
   ativo: boolean
 }
 type Erros = Partial<Record<keyof Form | 'foto', string>>
 
-const vazio: Form = { nome: '', descricao: '', preco: '', estoque: '0', unidade: '', categoria: '', ativo: true }
+const vazio: Form = { nome: '', descricao: '', preco: '', estoque: '0', unidade: '', minimo: '', categoria: '', ativo: true }
 
 function paraForm(p: Produto): Form {
   return {
@@ -47,6 +48,7 @@ function paraForm(p: Produto): Form {
     preco: p.preco.toFixed(2).replace('.', ','),
     estoque: String(p.estoque),
     unidade: p.unidade,
+    minimo: p.quantidade_minima ? String(p.quantidade_minima) : '',
     categoria: p.categoria,
     ativo: p.ativo,
   }
@@ -66,6 +68,9 @@ function validar(f: Form): Erros {
   if (!/^\d+$/.test(f.estoque.trim())) e.estoque = 'Informe um número inteiro igual ou maior que zero.'
   else if (Number(f.estoque) > 1_000_000) e.estoque = 'Estoque muito alto.'
   if (!f.unidade) e.unidade = 'Escolha a unidade de medida.'
+  if (f.minimo.trim() && (!/^\d+$/.test(f.minimo.trim()) || Number(f.minimo) < 1))
+    e.minimo = 'Informe um número inteiro maior que zero, ou deixe em branco.'
+  else if (Number(f.minimo) > 1_000_000) e.minimo = 'Quantidade mínima muito alta.'
   if (!f.categoria.trim()) e.categoria = 'Informe a categoria.'
   return e
 }
@@ -144,6 +149,8 @@ export default function ProdutoFormPage() {
         preco: parseMoeda(form.preco),
         estoque: Number(form.estoque),
         unidade: form.unidade as Unidade,
+        // 1 ou vazio = sem mínimo
+        quantidade_minima: Number(form.minimo) > 1 ? Number(form.minimo) : null,
         categoria: form.categoria.trim(),
         ativo: form.ativo,
         foto_url,
@@ -278,6 +285,15 @@ export default function ProdutoFormPage() {
               error={erros.estoque}
             />
           </div>
+          <Input
+            label={form.unidade ? `Quantidade mínima por pedido (${siglaUnidade(form.unidade)})` : 'Quantidade mínima por pedido'}
+            inputMode="numeric"
+            placeholder="Sem mínimo"
+            value={form.minimo}
+            onChange={(e) => set('minimo', e.target.value.replace(/\D/g, ''))}
+            error={erros.minimo}
+            hint="Opcional. Deixe em branco para o cliente comprar qualquer quantidade."
+          />
           <Input
             label="Categoria"
             list="categorias"

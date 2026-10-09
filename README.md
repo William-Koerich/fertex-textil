@@ -33,6 +33,8 @@ supabase/migrations/         Migrations SQL (geradas pelo Drizzle + customizadas
   0010_unidade_exclusao.sql  Unidade de medida (produto e item vendido) e exclusão de produto com vendas
   0011_funcoes_unidade.sql   Trigger da unidade no item e RPCs atualizadas
   0012_dashboard_unidade.sql Painel com unidade de medida
+  0013_quantidade_minima.sql Quantidade mínima por pedido no produto
+  0014_pedido_minimo.sql     Pedido pelo WhatsApp valida o mínimo; checkout direto desativado
 scripts/seed.ts              Dados de exemplo
 src/
   contexts/                  Auth, carrinho, tema, toasts
@@ -145,12 +147,13 @@ Row Level Security está ativo em todas as tabelas `fertex_*`. A chave publicáv
 | `fertex_itens_pedido` | o vendedor vê só os itens dos próprios produtos; o comprador vê os itens dos próprios pedidos |
 | Storage `fertex-produtos` | leitura pública das fotos; cada vendedor só grava/apaga na pasta `{seu id}/`; até 5 MB, só JPG/PNG/WebP |
 
-- **Checkout direto** (`fertex_finalizar_compra`, mantido no banco mas não usado pela tela, que agora envia pelo WhatsApp): uma transação trava as linhas dos produtos (`FOR UPDATE`), valida disponibilidade e estoque, grava o pedido e os itens com o **preço do banco** e baixa o estoque. Duas compras simultâneas da última unidade resultam em uma venda e um erro de "estoque insuficiente". O estoque nunca fica negativo.
+- **Checkout direto** (`fertex_finalizar_compra`, mantido no banco mas **sem permissão de execução** desde a migration 0014; a tela usa o pedido pelo WhatsApp): uma transação trava as linhas dos produtos (`FOR UPDATE`), valida disponibilidade e estoque, grava o pedido e os itens com o **preço do banco** e baixa o estoque. Duas compras simultâneas da última unidade resultam em uma venda e um erro de "estoque insuficiente". O estoque nunca fica negativo.
 - **Pedido pelo WhatsApp** (`fertex_enviar_pedido_whatsapp`): o comprador logado envia o carrinho. A função valida disponibilidade e estoque, exige que o vendedor tenha WhatsApp cadastrado e cria **um pedido por vendedor** com status `pendente`, **sem baixar o estoque**. O app abre o WhatsApp do vendedor (`wa.me`) com a mensagem pronta: itens, total, nome e observação. Depois de combinar, o vendedor clica em **Marcar como vendido** (`fertex_concluir_pedido`), que trava os produtos, confere o estoque, baixa o estoque e conclui a venda (ela entra no painel e em "Produtos vendidos" na data da conclusão). Também pode clicar em **Cancelar** (`fertex_cancelar_pedido`, permitido também ao comprador enquanto o pedido estiver pendente).
 - **Venda direta** (`fertex_registrar_venda`): o vendedor registra uma venda feita fora do app (balcão, WhatsApp…), com quantidade, preço unitário (preenchido com o preço atual) e nome do cliente opcional. A função trava o produto, confere que ele é do próprio vendedor e que há estoque, cria o pedido com origem `manual` e baixa o estoque. A venda aparece em "Produtos vendidos" com o selo "Venda direta" e entra no painel.
 - **Vendas e painel** (`fertex_vendas_vendedor`, `fertex_dashboard_vendedor`): funções `security definer` sempre filtradas por `auth.uid()`. Elas expõem ao vendedor só o nome do comprador e a data dos pedidos dos próprios produtos.
 - **Excluir produto:** um produto sem vendas é apagado do banco, junto com a foto. Um produto com vendas é marcado como excluído (`excluido_em`): sai da lista do vendedor e da loja e não pode mais ser vendido, mas as vendas continuam no painel, em "Produtos vendidos" e nos pedidos do comprador.
 - **Unidade de medida** (kg, litro, saco, unidade, caixa, rolo, metro): é obrigatória no cadastro, e preço e estoque usam essa unidade (por exemplo, "R$ 27,00/kg" e "50 kg disponíveis"). Cada item vendido guarda a unidade do momento da venda (trigger `fertex_itens_unidade`), então mudar a unidade do produto depois não altera o histórico. As quantidades são números inteiros.
+- **Quantidade mínima por pedido** (opcional, na unidade do produto, ex.: 200 kg): aparece na loja e no detalhe ("Pedido mínimo: 200 kg"). Ao adicionar ao carrinho, o produto já entra com o mínimo, e a quantidade não pode ficar abaixo dele. Se o estoque estiver abaixo do mínimo, o produto aparece como indisponível. A função `fertex_enviar_pedido_whatsapp` também recusa pedidos abaixo do mínimo, então não dá para contornar pela API. A venda direta registrada pelo vendedor não exige o mínimo.
 
 ## Observações
 

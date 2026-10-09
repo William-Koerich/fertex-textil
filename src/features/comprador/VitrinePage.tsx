@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { carregarVendedores } from '@/lib/vendedores'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
-import { listarProdutosAtivos } from '@/lib/produtos'
+import { atendeMinimo, listarProdutosAtivos } from '@/lib/produtos'
 import type { Produto } from '@/lib/produtos'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { inputClass } from '@/components/ui/Field'
@@ -38,6 +38,7 @@ function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vend
   const esgotado = produto.estoque <= 0
   const noCarrinho = itens.find((i) => i.produto_id === produto.id)?.quantidade ?? 0
   const limite = noCarrinho >= produto.estoque
+  const abaixoMinimo = !esgotado && !atendeMinimo(produto)
 
   return (
     <li className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
@@ -54,6 +55,11 @@ function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vend
           <span className="text-xs text-slate-500 dark:text-slate-400">{produto.categoria}</span>
           <h2 className="line-clamp-2 text-sm font-medium">{produto.nome}</h2>
           <span className="mt-1 font-bold">{formatarPrecoPor(produto.preco, produto.unidade)}</span>
+          {(produto.quantidade_minima ?? 1) > 1 && (
+            <span className="mt-0.5 text-xs font-medium text-brand-700 dark:text-brand-300">
+              Mínimo: {formatarQuantidade(produto.quantidade_minima!, produto.unidade)}
+            </span>
+          )}
           {vendedorNome && <span className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">por {vendedorNome}</span>}
         </div>
       </Link>
@@ -64,15 +70,18 @@ function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vend
       ) : (
       <button
         type="button"
-        disabled={esgotado || limite}
+        disabled={esgotado || limite || abaixoMinimo}
         onClick={() => {
-          if (adicionar(produto, 1)) toast(`${formatarQuantidade(1, produto.unidade)} de ${produto.nome} adicionado ao carrinho.`)
+          const n = adicionar(produto, 1)
+          if (n) toast(`${formatarQuantidade(n, produto.unidade)} de ${produto.nome} adicionado ao carrinho.`)
         }}
         className="absolute right-3 bottom-3 left-3 inline-flex items-center justify-center gap-1 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-400"
         aria-label={esgotado ? `${produto.nome} esgotado` : `Adicionar ${produto.nome} ao carrinho`}
       >
         {esgotado ? (
           'Esgotado'
+        ) : abaixoMinimo ? (
+          'Indisponível'
         ) : limite ? (
           'Limite do estoque'
         ) : (

@@ -17,7 +17,10 @@ export const CATEGORIAS_SUGERIDAS = [
 
 export const ESTOQUE_BAIXO = 5
 
-export type ProdutoInput = Pick<Produto, 'nome' | 'descricao' | 'preco' | 'estoque' | 'unidade' | 'categoria' | 'ativo'>
+/** O comprador só consegue pedir se o estoque cobre a quantidade mínima por pedido. */
+export const atendeMinimo = (p: Pick<Produto, 'estoque' | 'quantidade_minima'>) => p.estoque >= (p.quantidade_minima ?? 1)
+
+export type ProdutoInput = Pick<Produto, 'nome' | 'descricao' | 'preco' | 'estoque' | 'unidade' | 'quantidade_minima' | 'categoria' | 'ativo'>
 
 export async function listarMeusProdutos(vendedorId: string) {
   const { data, error } = await supabase

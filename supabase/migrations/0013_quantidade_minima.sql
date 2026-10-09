@@ -1,0 +1,2 @@
+ALTER TABLE "fertex_produtos" ADD COLUMN "quantidade_minima" integer;--> statement-breakpoint
+ALTER TABLE "fertex_produtos" ADD CONSTRAINT "fertex_produtos_minimo_check" CHECK ("fertex_produtos"."quantidade_minima" is null or "fertex_produtos"."quantidade_minima" >= 1);

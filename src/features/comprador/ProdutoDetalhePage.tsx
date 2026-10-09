@@ -58,6 +58,11 @@ export default function ProdutoDetalhePage() {
   const noCarrinho = itens.find((i) => i.produto_id === produto.id)?.quantidade ?? 0
   const disponivel = Math.max(0, produto.estoque - noCarrinho)
   const esgotado = produto.estoque <= 0
+  const minimo = produto.quantidade_minima ?? 1
+  // Abaixo do mínimo não há como pedir; já com o produto no carrinho, dá para somar de 1 em 1
+  const semEstoqueParaMinimo = !esgotado && produto.estoque < minimo
+  const minAdicionar = noCarrinho > 0 ? 1 : minimo
+  const qtdEfetiva = Math.max(minAdicionar, Math.min(qtd, disponivel))
 
   return (
     <>
@@ -80,6 +85,11 @@ export default function ProdutoDetalhePage() {
             <span className="text-lg font-medium text-slate-500 dark:text-slate-400"> / {siglaUnidade(produto.unidade)}</span>
           </p>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Preço por {UNIDADES.find((u) => u.valor === produto.unidade)?.label.toLowerCase()}</p>
+          {minimo > 1 && (
+            <p className="mt-3 w-fit rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-800 dark:bg-brand-950/60 dark:text-brand-200">
+              Pedido mínimo: {formatarQuantidade(minimo, produto.unidade)}
+            </p>
+          )}
 
           <p className="mt-2 text-sm">
             {esgotado ? (
@@ -118,6 +128,10 @@ export default function ProdutoDetalhePage() {
               <Button disabled className="w-full">
                 Esgotado
               </Button>
+            ) : semEstoqueParaMinimo ? (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                No momento o estoque ({formatarQuantidade(produto.estoque, produto.unidade)}) está abaixo do pedido mínimo. Fale com o vendedor.
+              </p>
             ) : disponivel === 0 ? (
               <Link to="/carrinho" className={buttonClass('secondary', 'w-full')}>
                 Todo o estoque já está no seu carrinho
@@ -125,13 +139,13 @@ export default function ProdutoDetalhePage() {
             ) : (
               <div className="flex gap-3">
                 <div className="flex items-center gap-2">
-                  <QuantityStepper value={Math.min(qtd, disponivel)} max={disponivel} onChange={setQtd} label="Quantidade" />
+                  <QuantityStepper value={qtdEfetiva} min={minAdicionar} max={disponivel} onChange={setQtd} label="Quantidade" />
                   <span className="text-sm text-slate-500 dark:text-slate-400">{siglaUnidade(produto.unidade)}</span>
                 </div>
                 <Button
                   className="flex-1"
                   onClick={() => {
-                    const n = adicionar(produto, Math.min(qtd, disponivel))
+                    const n = adicionar(produto, qtdEfetiva)
                     if (n) {
                       toast(`${formatarQuantidade(n, produto.unidade)} de ${produto.nome} adicionado ao carrinho.`)
                       setQtd(1)

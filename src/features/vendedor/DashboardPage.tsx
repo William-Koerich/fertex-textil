@@ -285,7 +285,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <StatTile label="Faturamento total" valor={formatarMoeda(d.faturamento_total)} detalhe="Desde o início" />
             <StatTile label="Faturamento do mês" valor={formatarMoeda(d.faturamento_mes)} detalhe={`Em ${formatarMes(d.fim)}`} />
-            <StatTile label="Vendas" valor={formatarNumero(d.vendas_periodo)} detalhe={`${formatarNumero(d.itens_periodo)} itens · ${dias} dias`}>
+            <StatTile label="Vendas" valor={formatarNumero(d.vendas_periodo)} detalhe={`Pedidos nos últimos ${dias} dias`}>
               <Delta atual={d.vendas_periodo} anterior={d.vendas_periodo_anterior} dias={dias} />
             </StatTile>
             <StatTile label="Ticket médio" valor={formatarMoeda(ticket)} detalhe={`${dias} dias`}>

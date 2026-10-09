@@ -62,7 +62,7 @@ export default function PedidosPage() {
         <ul className="space-y-3">
           {data.map((p) => {
             const st = STATUS_PEDIDO[p.status]
-            const qtd = p.itens.reduce((s, i) => s + i.quantidade, 0)
+            const qtd = p.itens.length
             return (
               <li key={p.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
@@ -92,7 +92,7 @@ export default function PedidosPage() {
                 {p.observacao && <p className="px-4 pb-2 text-sm text-slate-500 dark:text-slate-400">Observação: {p.observacao}</p>}
                 <div className="flex justify-between bg-slate-50 px-4 py-3 text-sm dark:bg-slate-800/50">
                   <span className="text-slate-500 dark:text-slate-400">
-                    {formatarNumero(qtd)} {qtd === 1 ? 'item' : 'itens'}
+                    {formatarNumero(qtd)} {qtd === 1 ? 'produto' : 'produtos'}
                   </span>
                   <span className="font-bold">Total {formatarMoeda(p.total)}</span>
                 </div>

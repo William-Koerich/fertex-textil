@@ -44,7 +44,7 @@ function PedidoEnviadoView({ pedidos, observacao, comprador }: { pedidos: Pedido
               <p className="text-sm text-slate-500 dark:text-slate-400">Pedido #{codigoPedido(p.pedido_id)}</p>
             </div>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {formatarNumero(p.itens.reduce((s, i) => s + i.quantidade, 0))} itens · {formatarMoeda(p.total)}
+              {p.itens.length} {p.itens.length === 1 ? 'produto' : 'produtos'} · {formatarMoeda(p.total)}
             </p>
             <a
               href={linkWhatsapp(p.whatsapp, mensagemPedido({ ...p, observacao }, comprador))}
@@ -109,7 +109,8 @@ export default function CarrinhoPage() {
     return [...m.entries()]
   }, [itens])
 
-  const problemas = itens.filter((i) => i.estoque <= 0 || i.quantidade > i.estoque)
+  const abaixoDoMinimo = (i: ItemCarrinho) => i.quantidade < (i.quantidade_minima ?? 1)
+  const problemas = itens.filter((i) => i.estoque <= 0 || i.quantidade > i.estoque || abaixoDoMinimo(i))
   const ehComprador = profile?.perfil === 'comprador'
 
   async function enviar() {
@@ -123,7 +124,7 @@ export default function CarrinhoPage() {
     } catch (e) {
       setErro(mensagemErro(e, 'Não foi possível enviar o pedido. Tente novamente.'))
       const hint = (e as { hint?: string }).hint
-      if (hint === 'estoque' || hint === 'indisponivel') await atualizarDoServidor()
+      if (hint === 'estoque' || hint === 'indisponivel' || hint === 'minimo') await atualizarDoServidor()
     } finally {
       setEnviando(false)
     }
@@ -152,7 +153,7 @@ export default function CarrinhoPage() {
     <>
       <PageHeader
         title="Carrinho"
-        subtitle={`${formatarNumero(totalItens)} ${totalItens === 1 ? 'item' : 'itens'}`}
+        subtitle={`${formatarNumero(totalItens)} ${totalItens === 1 ? 'produto' : 'produtos'}`}
         actions={atualizando ? <Spinner className="h-5 w-5 text-slate-400" /> : undefined}
       />
 
@@ -201,6 +202,7 @@ export default function CarrinhoPage() {
                             <div className="flex items-center gap-2">
                               <QuantityStepper
                                 size="sm"
+                                min={i.quantidade_minima ?? 1}
                                 value={i.quantidade}
                                 max={Math.max(i.estoque, i.quantidade)}
                                 onChange={(v) => alterarQuantidade(i.produto_id, v)}
@@ -210,6 +212,23 @@ export default function CarrinhoPage() {
                             </div>
                             <span className="font-semibold">{formatarMoeda(i.preco * i.quantidade)}</span>
                           </div>
+                        )}
+                        {(i.quantidade_minima ?? 1) > 1 && !indisponivel && (
+                          <p className={`text-xs ${abaixoDoMinimo(i) ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                            Pedido mínimo: {formatarQuantidade(i.quantidade_minima!, i.unidade)}
+                            {abaixoDoMinimo(i) && (
+                              <>
+                                {' '}
+                                <button
+                                  type="button"
+                                  className="font-semibold underline"
+                                  onClick={() => alterarQuantidade(i.produto_id, i.quantidade_minima!)}
+                                >
+                                  Ajustar
+                                </button>
+                              </>
+                            )}
+                          </p>
                         )}
                         {excede && (
                           <p className="text-sm text-amber-700 dark:text-amber-400">

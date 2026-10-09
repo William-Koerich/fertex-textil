@@ -92,6 +92,20 @@
       "when": 1791543020059,
       "tag": "0012_dashboard_unidade",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791545151935,
+      "tag": "0013_quantidade_minima",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791545153859,
+      "tag": "0014_pedido_minimo",
+      "breakpoints": true
     }
   ]
 }
