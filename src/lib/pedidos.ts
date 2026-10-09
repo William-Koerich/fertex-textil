@@ -1,5 +1,5 @@
 import type { ItemCarrinho } from '@/contexts/CartContext'
-import type { Pedido } from '@db/schema'
+import type { OrigemPedido, Pedido } from '@db/schema'
 import { supabase } from './supabase'
 
 /** Chama a RPC transacional fertex_finalizar_compra. Retorna o id do pedido criado. */
@@ -17,7 +17,9 @@ export interface Venda {
   data: string
   produto_id: string
   produto_nome: string
-  comprador_nome: string
+  /** nome do comprador (loja) ou do cliente informado na venda direta; null se não informado */
+  comprador_nome: string | null
+  origem: OrigemPedido
   quantidade: number
   preco_unitario: number
   total: number
@@ -52,4 +54,16 @@ export async function listarMeusPedidos() {
     .limit(200)
   if (error) throw error
   return (data ?? []) as unknown as PedidoComItens[]
+}
+
+/** Venda feita fora do app (balcão, WhatsApp…), registrada pelo vendedor. Baixa o estoque. */
+export async function registrarVenda(input: { produtoId: string; quantidade: number; clienteNome?: string; precoUnitario?: number }) {
+  const { data, error } = await supabase.rpc('fertex_registrar_venda', {
+    p_produto_id: input.produtoId,
+    p_quantidade: input.quantidade,
+    p_cliente_nome: input.clienteNome?.trim() || null,
+    p_preco_unitario: input.precoUnitario ?? null,
+  })
+  if (error) throw error
+  return data as string
 }

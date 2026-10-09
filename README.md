@@ -8,7 +8,7 @@ PWA de vendas (acelerador de vendas básico), mobile-first e em português. Vend
 
 | Perfil | Telas |
 |---|---|
-| **Vendedor** | **Painel**: faturamento total, do mês, vendas, ticket médio, estoque baixo, gráfico diário e top 5, com filtro de 7/30/90 dias · **Produtos**: lista com busca, criar/editar com foto, ativar/desativar e excluir · **Vendas**: tabela por item vendido, com filtro por período e produto e total no rodapé |
+| **Vendedor** | **Painel**: faturamento total, do mês, vendas, ticket médio, estoque baixo, gráfico diário e top 5, com filtro de 7/30/90 dias · **Produtos**: lista com busca, criar/editar com foto, ativar/desativar, excluir e **registrar venda** · **Vendas**: tabela por item vendido, com filtro por período e produto e total no rodapé; também permite registrar vendas diretas |
 | **Comprador** | **Loja**: grade com busca, filtro por categoria e selo "Esgotado" · **Detalhe do produto** · **Carrinho**: alterar quantidade, remover, finalizar · **Meus pedidos** |
 
 Além disso: sessão persistente, rotas protegidas por perfil, tema claro/escuro/sistema, app instalável, funcionamento offline do app shell, aviso de nova versão e estados de carregamento, vazio e erro em todas as telas.
@@ -25,6 +25,8 @@ supabase/migrations/         Migrations SQL (geradas pelo Drizzle + customizadas
   0003_finalizar_compra.sql  RPC transacional de checkout
   0004_vendas_vendedor.sql   RPC da tela de vendas
   0005_dashboard_vendedor.sql RPC do painel
+  0006_venda_manual.sql      Origem do pedido (loja/manual) e nome do cliente
+  0007_registrar_venda.sql   RPC de venda registrada pelo vendedor
 scripts/seed.ts              Dados de exemplo
 src/
   contexts/                  Auth, carrinho, tema, toasts
@@ -138,6 +140,7 @@ Row Level Security está ativo em todas as tabelas `fertex_*`. A chave publicáv
 | Storage `fertex-produtos` | leitura pública das fotos; cada vendedor só grava/apaga na pasta `{seu id}/`; até 5 MB, só JPG/PNG/WebP |
 
 - **Checkout** (`fertex_finalizar_compra`): uma transação trava as linhas dos produtos (`FOR UPDATE`), valida disponibilidade e estoque, grava o pedido e os itens com o **preço do banco** e baixa o estoque. Duas compras simultâneas da última unidade resultam em uma venda e um erro de "estoque insuficiente". O estoque nunca fica negativo.
+- **Venda direta** (`fertex_registrar_venda`): o vendedor registra uma venda feita fora do app (balcão, WhatsApp…), com quantidade, preço unitário (preenchido com o preço atual) e nome do cliente opcional. A função trava o produto, confere que ele é do próprio vendedor e que há estoque, cria o pedido com origem `manual` e baixa o estoque. A venda aparece em "Produtos vendidos" com o selo "Venda direta" e entra no painel.
 - **Vendas e painel** (`fertex_vendas_vendedor`, `fertex_dashboard_vendedor`): funções `security definer` sempre filtradas por `auth.uid()`. Elas expõem ao vendedor só o nome do comprador e a data dos pedidos dos próprios produtos.
 - Um produto que já tem vendas não pode ser excluído (o histórico fica preservado). Para tirá-lo da vitrine, desative-o.
 

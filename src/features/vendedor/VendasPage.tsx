@@ -1,17 +1,35 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { Receipt } from 'lucide-react'
+import { HandCoins, Receipt } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAsync } from '@/lib/useAsync'
 import { listarVendas } from '@/lib/pedidos'
 import { listarMeusProdutos } from '@/lib/produtos'
 import { formatarDataHora, formatarMoeda, formatarNumero } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { Button } from '@/components/ui/Button'
+import { useToast } from '@/contexts/ToastContext'
+import { RegistrarVendaDialog } from './RegistrarVendaDialog'
+import type { Venda } from '@/lib/pedidos'
 import { Select } from '@/components/ui/Field'
 import { LoadingState } from '@/components/ui/Spinner'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { intervaloDoPreset, PeriodoFiltro, PRESETS } from '@/components/PeriodoFiltro'
 import type { Preset } from '@/components/PeriodoFiltro'
+
+/** Nome do comprador (loja) ou do cliente da venda direta, com selo para vendas registradas manualmente */
+function Cliente({ v }: { v: Venda }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span>{v.comprador_nome ?? (v.origem === 'manual' ? 'Cliente não informado' : '—')}</span>
+      {v.origem === 'manual' && (
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          Venda direta
+        </span>
+      )}
+    </span>
+  )
+}
 
 export default function VendasPage() {
   const { profile } = useAuth()
@@ -23,6 +41,8 @@ export default function VendasPage() {
 
   const produtos = useAsync(() => listarMeusProdutos(profile!.id), [profile?.id])
   const vendas = useAsync(() => listarVendas({ inicio, fim, produtoId }), [inicio, fim, produtoId])
+  const toast = useToast()
+  const [registrando, setRegistrando] = useState(false)
 
   const totais = useMemo(() => {
     const lista = vendas.data ?? []
@@ -46,7 +66,26 @@ export default function VendasPage() {
 
   return (
     <>
-      <PageHeader title="Produtos vendidos" subtitle="Cada item vendido, com comprador e valores." />
+      <PageHeader
+        title="Produtos vendidos"
+        subtitle="Cada item vendido, com comprador e valores."
+        actions={
+          <Button onClick={() => setRegistrando(true)} disabled={produtos.loading}>
+            <HandCoins className="h-4 w-4" aria-hidden /> Registrar venda
+          </Button>
+        }
+      />
+      <RegistrarVendaDialog
+        open={registrando}
+        produtos={produtos.data}
+        onClose={() => setRegistrando(false)}
+        onRegistrada={(produto, quantidade) => {
+          toast(`Venda registrada: ${quantidade} × ${produto.nome}.`)
+          setRegistrando(false)
+          vendas.reload()
+          produtos.reload()
+        }}
+      />
 
       <div className="mb-5 space-y-3">
         <PeriodoFiltro
@@ -93,7 +132,9 @@ export default function VendasPage() {
                   </span>
                   <span>{formatarDataHora(v.data)}</span>
                 </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Comprador: {v.comprador_nome}</p>
+                <p className="mt-1 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                  <Cliente v={v} />
+                </p>
               </li>
             ))}
           </ul>
@@ -117,7 +158,9 @@ export default function VendasPage() {
                   <tr key={v.item_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400">{formatarDataHora(v.data)}</td>
                     <td className="px-4 py-3 font-medium">{v.produto_nome}</td>
-                    <td className="px-4 py-3">{v.comprador_nome}</td>
+                    <td className="px-4 py-3">
+                      <Cliente v={v} />
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatarNumero(v.quantidade)}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatarMoeda(Number(v.preco_unitario))}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatarMoeda(Number(v.total))}</td>

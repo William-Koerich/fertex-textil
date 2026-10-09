@@ -22,6 +22,8 @@ import { authenticatedRole, authUid, authUsers } from 'drizzle-orm/supabase'
 
 export const perfilEnum = pgEnum('fertex_perfil', ['vendedor', 'comprador'])
 export const statusPedidoEnum = pgEnum('fertex_status_pedido', ['pendente', 'concluido', 'cancelado'])
+/** loja: compra feita por um comprador no app · manual: venda registrada pelo vendedor (balcão, WhatsApp…) */
+export const origemPedidoEnum = pgEnum('fertex_origem_pedido', ['loja', 'manual'])
 
 const criadoEm = () => timestamp('criado_em', { withTimezone: true, mode: 'string' }).notNull().defaultNow()
 
@@ -96,17 +98,20 @@ export const pedidos = pgTable(
   'fertex_pedidos',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    comprador_id: uuid('comprador_id')
-      .notNull()
-      .references(() => profiles.id, { onDelete: 'cascade' }),
+    // null em vendas registradas manualmente pelo vendedor
+    comprador_id: uuid('comprador_id').references(() => profiles.id, { onDelete: 'cascade' }),
     total: numeric('total', { precision: 12, scale: 2, mode: 'number' }).notNull(),
     status: statusPedidoEnum('status').notNull().default('concluido'),
+    origem: origemPedidoEnum('origem').notNull().default('loja'),
+    /** nome do cliente informado pelo vendedor em vendas manuais (opcional) */
+    cliente_nome: text('cliente_nome'),
     criado_em: criadoEm(),
   },
   (t) => [
+    check('fertex_pedidos_origem_check', sql`(${t.origem} = 'loja' and ${t.comprador_id} is not null) or ${t.origem} = 'manual'`),
     index('fertex_pedidos_comprador_idx').on(t.comprador_id, t.criado_em),
     index('fertex_pedidos_criado_em_idx').on(t.criado_em),
-    // Escrita só pela função fertex_finalizar_compra (security definer)
+    // Escrita só pelas funções fertex_finalizar_compra e fertex_registrar_venda (security definer)
     pgPolicy('fertex_pedidos_select_comprador', {
       for: 'select',
       to: authenticatedRole,
@@ -149,6 +154,7 @@ export const itensPedido = pgTable(
 
 export type Perfil = (typeof perfilEnum.enumValues)[number]
 export type StatusPedido = (typeof statusPedidoEnum.enumValues)[number]
+export type OrigemPedido = (typeof origemPedidoEnum.enumValues)[number]
 export type Profile = typeof profiles.$inferSelect
 export type Produto = typeof produtos.$inferSelect
 export type Pedido = typeof pedidos.$inferSelect

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Package, Pencil, Plus, Search, Trash } from 'lucide-react'
+import { HandCoins, Package, Pencil, Plus, Search, Trash } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
@@ -15,6 +15,7 @@ import { LoadingState } from '@/components/ui/Spinner'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
+import { RegistrarVendaDialog } from './RegistrarVendaDialog'
 
 const normalizar = (s: string) =>
   s
@@ -55,6 +56,7 @@ export default function ProdutosPage() {
   const [busca, setBusca] = useState('')
   const [excluindo, setExcluindo] = useState<Produto | null>(null)
   const [processando, setProcessando] = useState(false)
+  const [vendendo, setVendendo] = useState<Produto | null>(null)
 
   const filtrados = useMemo(() => {
     const q = normalizar(busca.trim())
@@ -137,6 +139,16 @@ export default function ProdutosPage() {
                       <span className="text-slate-500 dark:text-slate-400">Estoque: {formatarNumero(p.estoque)}</span>
                       <StatusBadge produto={p} />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setVendendo(p)}
+                      disabled={p.estoque <= 0}
+                      className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                      aria-label={`Registrar venda de ${p.nome}`}
+                      title={p.estoque <= 0 ? 'Sem estoque' : 'Registrar uma venda feita fora do app'}
+                    >
+                      <HandCoins className="h-3.5 w-3.5" aria-hidden /> Registrar venda
+                    </button>
                   </div>
                   <div className="flex flex-col">
                     <Link
@@ -162,6 +174,17 @@ export default function ProdutosPage() {
           )}
         </>
       )}
+
+      <RegistrarVendaDialog
+        open={!!vendendo}
+        produto={vendendo}
+        onClose={() => setVendendo(null)}
+        onRegistrada={(produto, quantidade) => {
+          setData((lista) => lista?.map((x) => (x.id === produto.id ? { ...x, estoque: x.estoque - quantidade } : x)))
+          toast(`Venda registrada: ${quantidade} × ${produto.nome}.`)
+          setVendendo(null)
+        }}
+      />
 
       <ConfirmDialog
         open={!!excluindo}

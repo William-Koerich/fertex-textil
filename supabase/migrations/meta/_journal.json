@@ -43,6 +43,20 @@
       "when": 1791501944440,
       "tag": "0005_dashboard_vendedor",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791504136450,
+      "tag": "0006_venda_manual",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791504143233,
+      "tag": "0007_registrar_venda",
+      "breakpoints": true
     }
   ]
 }
