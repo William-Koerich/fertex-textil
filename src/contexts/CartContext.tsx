@@ -4,7 +4,8 @@ import type { Produto } from '@db/schema'
 
 /**
  * Item do carrinho: um por produto + cor. Guarda uma cópia dos dados do produto para exibição rápida
- * (atualizada ao abrir o carrinho). Estoque e pedido mínimo são do PRODUTO (somam todas as cores).
+ * (atualizada ao abrir o carrinho). O estoque é do PRODUTO (soma todas as cores); o pedido mínimo vale
+ * para cada linha (cada cor).
  */
 export interface ItemCarrinho {
   produto_id: string
@@ -33,7 +34,7 @@ interface CartValue {
   subtotal: number
   /** Total do produto no carrinho, somando todas as cores */
   totalDoProduto: (produtoId: string) => number
-  /** Adiciona respeitando estoque e pedido mínimo do produto. Retorna a quantidade efetivamente adicionada. */
+  /** Adiciona respeitando o estoque do produto e o mínimo de cada cor. Retorna a quantidade efetivamente adicionada. */
   adicionar: (p: Produto, quantidade?: number, cor?: string | null) => number
   alterarQuantidade: (chave: string, quantidade: number) => void
   remover: (chave: string) => void
@@ -108,11 +109,14 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
       const minimo = p.quantidade_minima ?? 1
       if (p.estoque < minimo) return 0
       const totalProduto = itens.filter((i) => i.produto_id === p.id).reduce((s, i) => s + i.quantidade, 0)
-      // Primeiro item do produto já entra com o mínimo; depois soma livremente até o estoque
-      const desejado = totalProduto === 0 ? Math.max(minimo, quantidade) : quantidade
-      const adicionada = Math.max(0, Math.min(desejado, p.estoque - totalProduto))
-      if (adicionada <= 0) return 0
       const k = chaveItem({ produto_id: p.id, cor: corFinal })
+      const naLinha = itens.find((i) => chaveItem(i) === k)?.quantidade ?? 0
+      const restante = p.estoque - totalProduto
+      // Cada cor nova já entra com o mínimo; depois soma livremente até o estoque do produto
+      if (naLinha === 0 && restante < minimo) return 0
+      const desejado = naLinha === 0 ? Math.max(minimo, quantidade) : quantidade
+      const adicionada = Math.max(0, Math.min(desejado, restante))
+      if (adicionada <= 0) return 0
       setItens((lista) => {
         const atual = lista.find((i) => chaveItem(i) === k)
         const item: ItemCarrinho = {
@@ -139,10 +143,10 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
     setItens((lista) => {
       const alvo = lista.find((i) => chaveItem(i) === k)
       if (!alvo) return lista
-      // Limites consideram as outras cores do mesmo produto
+      // Mínimo é por linha (cor); o máximo considera o estoque do produto menos as outras cores
       const outras = lista.filter((i) => i.produto_id === alvo.produto_id && chaveItem(i) !== k).reduce((s, i) => s + i.quantidade, 0)
-      const max = Math.max(1, alvo.estoque - outras)
-      const min = Math.max(1, (alvo.quantidade_minima ?? 1) - outras)
+      const min = alvo.quantidade_minima ?? 1
+      const max = Math.max(min, alvo.estoque - outras)
       const q = Math.max(min, Math.min(max, Math.floor(quantidade)))
       return lista.map((i) => (chaveItem(i) === k ? { ...i, quantidade: q } : i))
     })

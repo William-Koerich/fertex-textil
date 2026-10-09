@@ -37,6 +37,7 @@ supabase/migrations/         Migrations SQL (geradas pelo Drizzle + customizadas
   0014_pedido_minimo.sql     Pedido pelo WhatsApp valida o mínimo; checkout direto desativado
   0015_cores.sql             Cores do produto e cor do item vendido
   0016_funcoes_cores.sql     RPCs com cor; baixa de estoque somando as cores do mesmo produto
+  0017_minimo_por_cor.sql    Pedido mínimo passa a valer para cada cor
 scripts/seed.ts              Dados de exemplo
 src/
   contexts/                  Auth, carrinho, tema, toasts
@@ -156,7 +157,7 @@ Row Level Security está ativo em todas as tabelas `fertex_*`. A chave publicáv
 - **Excluir produto:** um produto sem vendas é apagado do banco, junto com a foto. Um produto com vendas é marcado como excluído (`excluido_em`): sai da lista do vendedor e da loja e não pode mais ser vendido, mas as vendas continuam no painel, em "Produtos vendidos" e nos pedidos do comprador.
 - **Unidade de medida** (kg, litro, saco, unidade, caixa, rolo, metro): é obrigatória no cadastro, e preço e estoque usam essa unidade (por exemplo, "R$ 27,00/kg" e "50 kg disponíveis"). Cada item vendido guarda a unidade do momento da venda (trigger `fertex_itens_unidade`), então mudar a unidade do produto depois não altera o histórico. As quantidades são números inteiros.
 - **Quantidade mínima por pedido** (opcional, na unidade do produto, ex.: 200 kg): aparece na loja e no detalhe ("Pedido mínimo: 200 kg"). Ao adicionar ao carrinho, o produto já entra com o mínimo, e a quantidade não pode ficar abaixo dele. Se o estoque estiver abaixo do mínimo, o produto aparece como indisponível. A função `fertex_enviar_pedido_whatsapp` também recusa pedidos abaixo do mínimo, então não dá para contornar pela API. A venda direta registrada pelo vendedor não exige o mínimo.
-- **Variações de cor** (opcional): o vendedor digita os nomes das cores no cadastro. Na loja, o cliente escolhe a cor antes de adicionar ao carrinho e pode levar várias cores do mesmo produto, uma linha para cada cor. **O estoque e o pedido mínimo são do produto**: somam todas as cores. A cor aparece no carrinho, na mensagem do WhatsApp, nos pedidos, em "Produtos vendidos" e na venda direta, onde também é obrigatória quando o produto tem cores. Produtos sem cores funcionam como antes.
+- **Variações de cor** (opcional): o vendedor digita os nomes das cores no cadastro. Na loja, o cliente escolhe a cor antes de adicionar ao carrinho e pode levar várias cores do mesmo produto, uma linha para cada cor. **O estoque é do produto** (soma todas as cores), mas **o pedido mínimo vale para cada cor**: com mínimo de 75 kg, um pedido com 2 cores precisa de pelo menos 75 kg de cada uma. A cor aparece no carrinho, na mensagem do WhatsApp, nos pedidos, em "Produtos vendidos" e na venda direta, onde também é obrigatória quando o produto tem cores. Produtos sem cores funcionam como antes.
 
 ## Observações
 

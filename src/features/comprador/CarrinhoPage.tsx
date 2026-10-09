@@ -109,8 +109,8 @@ export default function CarrinhoPage() {
     return [...m.entries()]
   }, [itens])
 
-  // Estoque e pedido mínimo valem para o produto inteiro (soma das cores)
-  const abaixoDoMinimo = (i: ItemCarrinho) => totalDoProduto(i.produto_id) < (i.quantidade_minima ?? 1)
+  // Pedido mínimo vale para cada linha (cor); o estoque é do produto inteiro (soma das cores)
+  const abaixoDoMinimo = (i: ItemCarrinho) => i.quantidade < (i.quantidade_minima ?? 1)
   const excedeEstoque = (i: ItemCarrinho) => totalDoProduto(i.produto_id) > i.estoque
   const corInvalida = (i: ItemCarrinho) => (i.cores?.length ?? 0) > 0 && (!i.cor || !i.cores!.includes(i.cor))
   const problemas = itens.filter((i) => i.estoque <= 0 || excedeEstoque(i) || abaixoDoMinimo(i) || corInvalida(i))
@@ -217,7 +217,7 @@ export default function CarrinhoPage() {
                             <div className="flex items-center gap-2">
                               <QuantityStepper
                                 size="sm"
-                                min={Math.max(1, (i.quantidade_minima ?? 1) - outrasCores)}
+                                min={i.quantidade_minima ?? 1}
                                 value={i.quantidade}
                                 max={Math.max(i.estoque - outrasCores, i.quantidade)}
                                 onChange={(v) => alterarQuantidade(k, v)}
@@ -231,14 +231,14 @@ export default function CarrinhoPage() {
                         {(i.quantidade_minima ?? 1) > 1 && !indisponivel && (
                           <p className={`text-xs ${abaixoDoMinimo(i) ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
                             Pedido mínimo: {formatarQuantidade(i.quantidade_minima!, i.unidade)}
-                            {(i.cores?.length ?? 0) > 0 && ' (somando as cores)'}
+                            {(i.cores?.length ?? 0) > 0 && ' por cor'}
                             {abaixoDoMinimo(i) && (
                               <>
                                 {' '}
                                 <button
                                   type="button"
                                   className="font-semibold underline"
-                                  onClick={() => alterarQuantidade(k, i.quantidade_minima! - outrasCores)}
+                                  onClick={() => alterarQuantidade(k, i.quantidade_minima!)}
                                 >
                                   Ajustar
                                 </button>

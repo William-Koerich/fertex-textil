@@ -120,6 +120,13 @@
       "when": 1791564339141,
       "tag": "0016_funcoes_cores",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791570465283,
+      "tag": "0017_minimo_por_cor",
+      "breakpoints": true
     }
   ]
 }

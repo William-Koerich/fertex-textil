@@ -64,6 +64,7 @@ function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vend
           {(produto.quantidade_minima ?? 1) > 1 && (
             <span className="mt-0.5 text-xs font-medium text-brand-700 dark:text-brand-300">
               Mínimo: {formatarQuantidade(produto.quantidade_minima!, produto.unidade)}
+              {temCores && ' por cor'}
             </span>
           )}
           {vendedorNome && <span className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">por {vendedorNome}</span>}

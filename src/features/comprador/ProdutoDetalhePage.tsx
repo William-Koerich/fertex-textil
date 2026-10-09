@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, ShoppingCart } from 'lucide-react'
-import { useCart } from '@/contexts/CartContext'
+import { chaveItem, useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { carregarVendedores } from '@/lib/vendedores'
 import { useToast } from '@/contexts/ToastContext'
@@ -19,7 +19,7 @@ export default function ProdutoDetalhePage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { data: produto, loading, error, reload } = useAsync(() => buscarProduto(id!), [id])
-  const { adicionar, totalDoProduto } = useCart()
+  const { adicionar, totalDoProduto, itens } = useCart()
   const [cor, setCor] = useState<string | null>(null)
   const [erroCor, setErroCor] = useState(false)
   const toast = useToast()
@@ -65,7 +65,10 @@ export default function ProdutoDetalhePage() {
   const minimo = produto.quantidade_minima ?? 1
   // Abaixo do mínimo não há como pedir; já com o produto no carrinho, dá para somar de 1 em 1
   const semEstoqueParaMinimo = !esgotado && produto.estoque < minimo
-  const minAdicionar = noCarrinho > 0 ? 1 : minimo
+  // Mínimo vale por cor: se esta cor já está no carrinho, dá para somar de 1 em 1
+  const naCor = itens.find((i) => chaveItem(i) === chaveItem({ produto_id: produto.id, cor: cores.length ? cor : null }))?.quantidade ?? 0
+  const minAdicionar = naCor > 0 ? 1 : minimo
+  const faltaParaNovaCor = disponivel > 0 && disponivel < minAdicionar
   const qtdEfetiva = Math.max(minAdicionar, Math.min(qtd, disponivel))
 
   return (
@@ -92,6 +95,7 @@ export default function ProdutoDetalhePage() {
           {minimo > 1 && (
             <p className="mt-3 w-fit rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-800 dark:bg-brand-950/60 dark:text-brand-200">
               Pedido mínimo: {formatarQuantidade(minimo, produto.unidade)}
+              {cores.length > 0 && ' por cor'}
             </p>
           )}
 
@@ -171,6 +175,12 @@ export default function ProdutoDetalhePage() {
                     {erroCor && <p className="mt-2 text-sm text-red-600 dark:text-red-400">Escolha a cor antes de adicionar.</p>}
                   </fieldset>
                 )}
+              {faltaParaNovaCor ? (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                  Restam {formatarQuantidade(disponivel, produto.unidade)} em estoque, menos que o mínimo de{' '}
+                  {formatarQuantidade(minimo, produto.unidade)} {cores.length ? 'para mais uma cor' : 'deste produto'}.
+                </p>
+              ) : (
               <div className="flex gap-3">
                 <div className="flex items-center gap-2">
                   <QuantityStepper value={qtdEfetiva} min={minAdicionar} max={disponivel} onChange={setQtd} label="Quantidade" />
@@ -190,6 +200,7 @@ export default function ProdutoDetalhePage() {
                   <ShoppingCart className="h-4 w-4" aria-hidden /> Adicionar ao carrinho
                 </Button>
               </div>
+              )}
               </div>
             )}
           </div>
