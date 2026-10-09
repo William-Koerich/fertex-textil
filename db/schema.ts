@@ -74,6 +74,8 @@ export const produtos = pgTable(
     unidade: unidadeEnum('unidade').notNull().default('unidade'),
     /** Quantidade mínima por pedido (na unidade do produto). null = sem mínimo */
     quantidade_minima: integer('quantidade_minima'),
+    /** Cores disponíveis (vazio = produto sem variação de cor). O estoque é do produto, não por cor. */
+    cores: text('cores').array().notNull().default(sql`'{}'::text[]`),
     categoria: text('categoria').notNull(),
     foto_url: text('foto_url'),
     ativo: boolean('ativo').notNull().default(true),
@@ -86,6 +88,7 @@ export const produtos = pgTable(
     index('fertex_produtos_ativo_idx').on(t.ativo),
     check('fertex_produtos_preco_check', sql`${t.preco} >= 0`),
     check('fertex_produtos_estoque_check', sql`${t.estoque} >= 0`),
+    check('fertex_produtos_cores_check', sql`cardinality(${t.cores}) <= 50 and array_position(${t.cores}, '') is null`),
     check('fertex_produtos_minimo_check', sql`${t.quantidade_minima} is null or ${t.quantidade_minima} >= 1`),
     check('fertex_produtos_nome_check', sql`char_length(trim(${t.nome})) between 2 and 120`),
     // Leitura: produtos ativos, os próprios (mesmo inativos) e os que aparecem em pedidos visíveis ao usuário
@@ -167,6 +170,8 @@ export const itensPedido = pgTable(
     quantidade: integer('quantidade').notNull(),
     /** unidade no momento da venda (copiada do produto por trigger) */
     unidade: unidadeEnum('unidade').notNull().default('unidade'),
+    /** cor escolhida pelo comprador (null quando o produto não tem variação de cor) */
+    cor: text('cor'),
     preco_unitario: numeric('preco_unitario', { precision: 12, scale: 2, mode: 'number' }).notNull(),
   },
   (t) => [

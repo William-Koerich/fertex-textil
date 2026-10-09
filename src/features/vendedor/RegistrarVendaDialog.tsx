@@ -30,6 +30,7 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
   const [quantidade, setQuantidade] = useState(1)
   const [preco, setPreco] = useState('')
   const [cliente, setCliente] = useState('')
+  const [cor, setCor] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [erroPreco, setErroPreco] = useState<string>()
   const [enviando, setEnviando] = useState(false)
@@ -45,6 +46,7 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
       setQuantidade(1)
       setPreco(produto ? precoTexto(produto.preco) : '')
       setCliente('')
+      setCor('')
       setErro(null)
       setErroPreco(undefined)
       if (!d.open) d.showModal()
@@ -57,11 +59,12 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!selecionado) return setErro('Escolha o produto vendido.')
+    if (selecionado.cores?.length && !cor) return setErro('Escolha a cor vendida.')
     if (Number.isNaN(precoNum) || precoNum < 0) return setErroPreco('Preço inválido. Use o formato 49,90.')
     setErro(null)
     setEnviando(true)
     try {
-      await registrarVenda({ produtoId: selecionado.id, quantidade, clienteNome: cliente, precoUnitario: precoNum })
+      await registrarVenda({ produtoId: selecionado.id, quantidade, clienteNome: cliente, precoUnitario: precoNum, cor: cor || null })
       onRegistrada(selecionado, quantidade)
     } catch (err) {
       setErro(mensagemErro(err, 'Não foi possível registrar a venda. Tente novamente.'))
@@ -107,6 +110,7 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
               setProdutoId(e.target.value)
               setQuantidade(1)
               setPreco(p ? precoTexto(p.preco) : '')
+              setCor('')
             }}
             hint={disponiveis.length ? undefined : 'Nenhum produto com estoque disponível.'}
           >
@@ -144,6 +148,16 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
             </div>
             {quantidade === selecionado.estoque && (
               <p className="text-sm text-amber-700 dark:text-amber-400">Esta venda zera o estoque: o produto ficará esgotado.</p>
+            )}
+            {selecionado.cores?.length > 0 && (
+              <Select label="Cor" value={cor} onChange={(e) => setCor(e.target.value)}>
+                <option value="">Escolha a cor</option>
+                {selecionado.cores.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
             )}
             <Input
               label="Cliente (opcional)"

@@ -27,7 +27,7 @@ export interface PedidoMensagem {
   pedido_id: string
   vendedor_nome: string
   total: number
-  itens: { nome: string; quantidade: number; preco_unitario: number; unidade?: Unidade }[]
+  itens: { nome: string; quantidade: number; preco_unitario: number; unidade?: Unidade; cor?: string | null }[]
   observacao?: string | null
 }
 
@@ -41,7 +41,7 @@ export function mensagemPedido(p: PedidoMensagem, comprador: string): string {
     `*Pedido #${codigoPedido(p.pedido_id)}*`,
     ...p.itens.map(
       (i) =>
-        `• ${formatarQuantidade(i.quantidade, i.unidade)} de ${i.nome} (${formatarPrecoPor(i.preco_unitario, i.unidade)}) = ${formatarMoeda(i.quantidade * i.preco_unitario)}`,
+        `• ${formatarQuantidade(i.quantidade, i.unidade)} de ${i.nome}${i.cor ? ` - cor ${i.cor}` : ''} (${formatarPrecoPor(i.preco_unitario, i.unidade)}) = ${formatarMoeda(i.quantidade * i.preco_unitario)}`,
     ),
     '',
     `*Total: ${formatarMoeda(p.total)}*`,

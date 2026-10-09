@@ -142,7 +142,10 @@ export default function ProdutosPage() {
                     <div className="flex items-start justify-between gap-2">
                       <h2 className="line-clamp-2 font-semibold">{p.nome}</h2>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{p.categoria}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {p.categoria}
+                      {p.cores?.length > 0 && ` · ${p.cores.length} ${p.cores.length === 1 ? 'cor' : 'cores'}`}
+                    </p>
                     <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm">
                       <span className="font-semibold">{formatarPrecoPor(p.preco, p.unidade)}</span>
                       <span className="text-slate-500 dark:text-slate-400">Estoque: {formatarQuantidade(p.estoque, p.unidade)}</span>

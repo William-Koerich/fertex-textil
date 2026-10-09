@@ -2,9 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react'
 import type { Produto } from '@db/schema'
 
-/** Item do carrinho: guarda uma cópia dos dados do produto para exibição rápida (atualizada ao abrir o carrinho). */
+/**
+ * Item do carrinho: um por produto + cor. Guarda uma cópia dos dados do produto para exibição rápida
+ * (atualizada ao abrir o carrinho). Estoque e pedido mínimo são do PRODUTO (somam todas as cores).
+ */
 export interface ItemCarrinho {
   produto_id: string
+  /** cor escolhida (null/ausente em produtos sem variação de cor) */
+  cor?: string | null
   quantidade: number
   nome: string
   preco: number
@@ -14,19 +19,26 @@ export interface ItemCarrinho {
   unidade?: Produto['unidade']
   /** quantidade mínima por pedido (null/ausente = sem mínimo) */
   quantidade_minima?: number | null
+  /** cores disponíveis no produto (para validar a cor escolhida) */
+  cores?: string[]
 }
+
+/** Identifica a linha do carrinho (produto + cor). */
+export const chaveItem = (i: Pick<ItemCarrinho, 'produto_id' | 'cor'>) => `${i.produto_id}|${i.cor ?? ''}`
 
 interface CartValue {
   itens: ItemCarrinho[]
-  /** quantidade de produtos diferentes no carrinho (as quantidades têm unidades diferentes) */
+  /** quantidade de linhas no carrinho (as quantidades têm unidades diferentes, não dá para somar) */
   totalItens: number
   subtotal: number
-  /** Adiciona respeitando o estoque. Retorna a quantidade efetivamente adicionada. */
-  adicionar: (p: Produto, quantidade?: number) => number
-  alterarQuantidade: (produtoId: string, quantidade: number) => void
-  remover: (produtoId: string) => void
+  /** Total do produto no carrinho, somando todas as cores */
+  totalDoProduto: (produtoId: string) => number
+  /** Adiciona respeitando estoque e pedido mínimo do produto. Retorna a quantidade efetivamente adicionada. */
+  adicionar: (p: Produto, quantidade?: number, cor?: string | null) => number
+  alterarQuantidade: (chave: string, quantidade: number) => void
+  remover: (chave: string) => void
   limpar: () => void
-  /** Atualiza nome/preço/estoque com dados novos do servidor e remove produtos que não existem mais */
+  /** Atualiza nome/preço/estoque/cores com dados novos do servidor */
   sincronizar: (produtos: Produto[]) => void
 }
 
@@ -50,14 +62,14 @@ function mesclarComAnonimo(chave: string): ItemCarrinho[] {
   if (chave === CHAVE_ANONIMO) return doUsuario
   const anonimo = carregar(CHAVE_ANONIMO)
   if (!anonimo.length) return doUsuario
-  const porId = new Map(doUsuario.map((i) => [i.produto_id, { ...i }]))
+  const porChave = new Map(doUsuario.map((i) => [chaveItem(i), { ...i }]))
   for (const a of anonimo) {
-    const atual = porId.get(a.produto_id)
-    if (atual) atual.quantidade = Math.min(Math.max(atual.estoque, a.estoque), atual.quantidade + a.quantidade)
-    else porId.set(a.produto_id, a)
+    const atual = porChave.get(chaveItem(a))
+    if (atual) atual.quantidade += a.quantidade
+    else porChave.set(chaveItem(a), a)
   }
   // O carrinho anônimo é apagado num efeito (o inicializador pode rodar 2x no StrictMode)
-  return [...porId.values()]
+  return [...porChave.values()]
 }
 
 /**
@@ -84,51 +96,80 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
     return () => window.removeEventListener('storage', onStorage)
   }, [chave])
 
-  const adicionar = useCallback((p: Produto, quantidade = 1) => {
-    const atual = itens.find((i) => i.produto_id === p.id)?.quantidade ?? 0
-    const minimo = p.quantidade_minima ?? 1
-    // Respeita a quantidade mínima: o primeiro "adicionar" já coloca o mínimo
-    if (p.estoque < minimo) return 0
-    const nova = Math.min(p.estoque, Math.max(minimo, atual + quantidade))
-    const adicionada = Math.max(0, nova - atual)
-    if (nova <= 0) return 0
-    setItens((lista) => {
-      const item: ItemCarrinho = {
-        produto_id: p.id,
-        quantidade: nova,
-        nome: p.nome,
-        preco: p.preco,
-        foto_url: p.foto_url,
-        estoque: p.estoque,
-        vendedor_id: p.vendedor_id,
-        unidade: p.unidade,
-        quantidade_minima: p.quantidade_minima,
-      }
-      return atual ? lista.map((i) => (i.produto_id === p.id ? item : i)) : [...lista, item]
-    })
-    return adicionada
-  }, [itens])
+  const totalDoProduto = useCallback(
+    (produtoId: string) => itens.filter((i) => i.produto_id === produtoId).reduce((s, i) => s + i.quantidade, 0),
+    [itens],
+  )
 
-  const alterarQuantidade = useCallback((produtoId: string, quantidade: number) => {
-    setItens((lista) =>
-      lista.map((i) =>
-        i.produto_id === produtoId
-          ? { ...i, quantidade: Math.max(i.quantidade_minima ?? 1, Math.min(i.estoque, Math.floor(quantidade))) }
-          : i,
-      ),
-    )
+  const adicionar = useCallback(
+    (p: Produto, quantidade = 1, cor: string | null = null) => {
+      const corFinal = p.cores?.length ? cor : null
+      if (p.cores?.length && !corFinal) return 0
+      const minimo = p.quantidade_minima ?? 1
+      if (p.estoque < minimo) return 0
+      const totalProduto = itens.filter((i) => i.produto_id === p.id).reduce((s, i) => s + i.quantidade, 0)
+      // Primeiro item do produto já entra com o mínimo; depois soma livremente até o estoque
+      const desejado = totalProduto === 0 ? Math.max(minimo, quantidade) : quantidade
+      const adicionada = Math.max(0, Math.min(desejado, p.estoque - totalProduto))
+      if (adicionada <= 0) return 0
+      const k = chaveItem({ produto_id: p.id, cor: corFinal })
+      setItens((lista) => {
+        const atual = lista.find((i) => chaveItem(i) === k)
+        const item: ItemCarrinho = {
+          produto_id: p.id,
+          cor: corFinal,
+          quantidade: (atual?.quantidade ?? 0) + adicionada,
+          nome: p.nome,
+          preco: p.preco,
+          foto_url: p.foto_url,
+          estoque: p.estoque,
+          vendedor_id: p.vendedor_id,
+          unidade: p.unidade,
+          quantidade_minima: p.quantidade_minima,
+          cores: p.cores ?? [],
+        }
+        return atual ? lista.map((i) => (chaveItem(i) === k ? item : i)) : [...lista, item]
+      })
+      return adicionada
+    },
+    [itens],
+  )
+
+  const alterarQuantidade = useCallback((k: string, quantidade: number) => {
+    setItens((lista) => {
+      const alvo = lista.find((i) => chaveItem(i) === k)
+      if (!alvo) return lista
+      // Limites consideram as outras cores do mesmo produto
+      const outras = lista.filter((i) => i.produto_id === alvo.produto_id && chaveItem(i) !== k).reduce((s, i) => s + i.quantidade, 0)
+      const max = Math.max(1, alvo.estoque - outras)
+      const min = Math.max(1, (alvo.quantidade_minima ?? 1) - outras)
+      const q = Math.max(min, Math.min(max, Math.floor(quantidade)))
+      return lista.map((i) => (chaveItem(i) === k ? { ...i, quantidade: q } : i))
+    })
   }, [])
 
-  const remover = useCallback((produtoId: string) => setItens((l) => l.filter((i) => i.produto_id !== produtoId)), [])
+  const remover = useCallback((k: string) => setItens((l) => l.filter((i) => chaveItem(i) !== k)), [])
   const limpar = useCallback(() => setItens([]), [])
 
   const sincronizar = useCallback((produtos: Produto[]) => {
     const porId = new Map(produtos.map((p) => [p.id, p]))
     setItens((lista) =>
-      lista.flatMap((i) => {
+      lista.map((i) => {
         const p = porId.get(i.produto_id)
-        if (!p) return [{ ...i, estoque: 0 }]
-        return [{ ...i, nome: p.nome, preco: p.preco, foto_url: p.foto_url, estoque: p.ativo && !p.excluido_em ? p.estoque : 0, vendedor_id: p.vendedor_id, unidade: p.unidade, quantidade_minima: p.quantidade_minima }]
+        if (!p) return { ...i, estoque: 0 }
+        return {
+          ...i,
+          nome: p.nome,
+          preco: p.preco,
+          foto_url: p.foto_url,
+          estoque: p.ativo && !p.excluido_em ? p.estoque : 0,
+          vendedor_id: p.vendedor_id,
+          unidade: p.unidade,
+          quantidade_minima: p.quantidade_minima,
+          cores: p.cores ?? [],
+          // Produto deixou de ter cores: a cor escolhida não vale mais
+          cor: p.cores?.length ? i.cor : null,
+        }
       }),
     )
   }, [])
@@ -136,8 +177,8 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
   const value = useMemo<CartValue>(() => {
     const totalItens = itens.length
     const subtotal = itens.reduce((s, i) => s + i.quantidade * i.preco, 0)
-    return { itens, totalItens, subtotal, adicionar, alterarQuantidade, remover, limpar, sincronizar }
-  }, [itens, adicionar, alterarQuantidade, remover, limpar, sincronizar])
+    return { itens, totalItens, subtotal, totalDoProduto, adicionar, alterarQuantidade, remover, limpar, sincronizar }
+  }, [itens, totalDoProduto, adicionar, alterarQuantidade, remover, limpar, sincronizar])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

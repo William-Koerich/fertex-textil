@@ -19,7 +19,9 @@ export default function ProdutoDetalhePage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { data: produto, loading, error, reload } = useAsync(() => buscarProduto(id!), [id])
-  const { adicionar, itens } = useCart()
+  const { adicionar, totalDoProduto } = useCart()
+  const [cor, setCor] = useState<string | null>(null)
+  const [erroCor, setErroCor] = useState(false)
   const toast = useToast()
   const [qtd, setQtd] = useState(1)
   const { profile } = useAuth()
@@ -55,7 +57,9 @@ export default function ProdutoDetalhePage() {
       </>
     )
 
-  const noCarrinho = itens.find((i) => i.produto_id === produto.id)?.quantidade ?? 0
+  // Estoque e mínimo são do produto: soma todas as cores já no carrinho
+  const noCarrinho = totalDoProduto(produto.id)
+  const cores = produto.cores ?? []
   const disponivel = Math.max(0, produto.estoque - noCarrinho)
   const esgotado = produto.estoque <= 0
   const minimo = produto.quantidade_minima ?? 1
@@ -137,6 +141,36 @@ export default function ProdutoDetalhePage() {
                 Todo o estoque já está no seu carrinho
               </Link>
             ) : (
+              <div className="space-y-4">
+                {cores.length > 0 && (
+                  <fieldset>
+                    <legend className="mb-2 text-sm font-semibold">
+                      Cor{cor && <span className="font-normal text-slate-500 dark:text-slate-400">: {cor}</span>}
+                    </legend>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Cor">
+                      {cores.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          role="radio"
+                          aria-checked={cor === c}
+                          onClick={() => {
+                            setCor(c)
+                            setErroCor(false)
+                          }}
+                          className={`rounded-lg border-2 px-3 py-1.5 text-sm font-medium transition-colors ${
+                            cor === c
+                              ? 'border-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-950/60 dark:text-brand-200'
+                              : 'border-slate-200 hover:border-slate-400 dark:border-slate-700 dark:hover:border-slate-500'
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                    {erroCor && <p className="mt-2 text-sm text-red-600 dark:text-red-400">Escolha a cor antes de adicionar.</p>}
+                  </fieldset>
+                )}
               <div className="flex gap-3">
                 <div className="flex items-center gap-2">
                   <QuantityStepper value={qtdEfetiva} min={minAdicionar} max={disponivel} onChange={setQtd} label="Quantidade" />
@@ -145,15 +179,17 @@ export default function ProdutoDetalhePage() {
                 <Button
                   className="flex-1"
                   onClick={() => {
-                    const n = adicionar(produto, qtdEfetiva)
+                    if (cores.length && !cor) return setErroCor(true)
+                    const n = adicionar(produto, qtdEfetiva, cor)
                     if (n) {
-                      toast(`${formatarQuantidade(n, produto.unidade)} de ${produto.nome} adicionado ao carrinho.`)
+                      toast(`${formatarQuantidade(n, produto.unidade)} de ${produto.nome}${cor ? ` (${cor})` : ''} adicionado ao carrinho.`)
                       setQtd(1)
                     }
                   }}
                 >
                   <ShoppingCart className="h-4 w-4" aria-hidden /> Adicionar ao carrinho
                 </Button>
+              </div>
               </div>
             )}
           </div>

@@ -33,10 +33,11 @@ function CardSkeleton() {
 }
 
 function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vendedorNome?: string; previa: boolean }) {
-  const { adicionar, itens } = useCart()
+  const { adicionar, totalDoProduto } = useCart()
   const toast = useToast()
   const esgotado = produto.estoque <= 0
-  const noCarrinho = itens.find((i) => i.produto_id === produto.id)?.quantidade ?? 0
+  const noCarrinho = totalDoProduto(produto.id)
+  const temCores = (produto.cores?.length ?? 0) > 0
   const limite = noCarrinho >= produto.estoque
   const abaixoMinimo = !esgotado && !atendeMinimo(produto)
 
@@ -55,6 +56,11 @@ function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vend
           <span className="text-xs text-slate-500 dark:text-slate-400">{produto.categoria}</span>
           <h2 className="line-clamp-2 text-sm font-medium">{produto.nome}</h2>
           <span className="mt-1 font-bold">{formatarPrecoPor(produto.preco, produto.unidade)}</span>
+          {temCores && (
+            <span className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              {produto.cores.length} {produto.cores.length === 1 ? 'cor' : 'cores'}
+            </span>
+          )}
           {(produto.quantidade_minima ?? 1) > 1 && (
             <span className="mt-0.5 text-xs font-medium text-brand-700 dark:text-brand-300">
               Mínimo: {formatarQuantidade(produto.quantidade_minima!, produto.unidade)}
@@ -63,7 +69,15 @@ function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vend
           {vendedorNome && <span className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">por {vendedorNome}</span>}
         </div>
       </Link>
-      {previa ? (
+      {!previa && temCores && !esgotado && !abaixoMinimo ? (
+        <Link
+          to={`/loja/${produto.id}`}
+          className="absolute right-3 bottom-3 left-3 inline-flex items-center justify-center gap-1 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          aria-label={`Escolher cor de ${produto.nome}`}
+        >
+          Escolher cor
+        </Link>
+      ) : previa ? (
         <span className="absolute right-3 bottom-3 left-3 rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
           {esgotado ? 'Esgotado' : `${formatarQuantidade(produto.estoque, produto.unidade)} em estoque`}
         </span>

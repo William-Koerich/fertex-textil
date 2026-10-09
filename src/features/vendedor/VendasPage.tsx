@@ -127,7 +127,10 @@ export default function VendasPage() {
             {vendas.data.map((v) => (
               <li key={v.item_id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex justify-between gap-2">
-                  <span className="font-medium">{v.produto_nome}</span>
+                  <span className="font-medium">
+                    {v.produto_nome}
+                    {v.cor && <span className="font-normal text-slate-500 dark:text-slate-400"> · {v.cor}</span>}
+                  </span>
                   <span className="font-semibold whitespace-nowrap">{formatarMoeda(Number(v.total))}</span>
                 </div>
                 <div className="mt-1 flex justify-between gap-2 text-sm text-slate-500 dark:text-slate-400">
@@ -161,7 +164,10 @@ export default function VendasPage() {
                 {vendas.data.map((v) => (
                   <tr key={v.item_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400">{formatarDataHora(v.data)}</td>
-                    <td className="px-4 py-3 font-medium">{v.produto_nome}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {v.produto_nome}
+                      {v.cor && <span className="font-normal text-slate-500 dark:text-slate-400"> · {v.cor}</span>}
+                    </td>
                     <td className="px-4 py-3">
                       <Cliente v={v} />
                     </td>

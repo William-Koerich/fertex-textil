@@ -80,7 +80,10 @@ export default function PedidosPage() {
                     <li key={i.id} className="flex items-center gap-3 py-2.5">
                       <ProdutoFoto url={i.foto_url} nome={i.nome} className="h-12 w-12 shrink-0 rounded-lg" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{i.nome}</p>
+                        <p className="truncate text-sm font-medium">
+                          {i.nome}
+                          {i.cor && <span className="font-normal text-slate-500 dark:text-slate-400"> · {i.cor}</span>}
+                        </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {formatarQuantidade(i.quantidade, i.unidade)} × {formatarPrecoPor(i.preco_unitario, i.unidade)}
                         </p>

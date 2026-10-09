@@ -20,6 +20,7 @@ export interface Venda {
   origem: OrigemPedido
   quantidade: number
   unidade: Unidade
+  cor: string | null
   preco_unitario: number
   total: number
 }
@@ -36,12 +37,19 @@ export async function listarVendas(filtro: { inicio?: string; fim?: string; prod
 }
 
 /** Venda feita fora do app (balcão, WhatsApp…), registrada pelo vendedor. Baixa o estoque. */
-export async function registrarVenda(input: { produtoId: string; quantidade: number; clienteNome?: string; precoUnitario?: number }) {
+export async function registrarVenda(input: {
+  produtoId: string
+  quantidade: number
+  clienteNome?: string
+  precoUnitario?: number
+  cor?: string | null
+}) {
   const { data, error } = await supabase.rpc('fertex_registrar_venda', {
     p_produto_id: input.produtoId,
     p_quantidade: input.quantidade,
     p_cliente_nome: input.clienteNome?.trim() || null,
     p_preco_unitario: input.precoUnitario ?? null,
+    p_cor: input.cor ?? null,
   })
   if (error) throw error
   return data as string
@@ -56,13 +64,13 @@ export interface PedidoEnviado {
   vendedor_nome: string
   whatsapp: string
   total: number
-  itens: { nome: string; quantidade: number; preco_unitario: number; unidade: Unidade }[]
+  itens: { nome: string; cor: string | null; quantidade: number; preco_unitario: number; unidade: Unidade }[]
 }
 
 /** Cria um pedido pendente por vendedor (sem baixar estoque) e devolve os dados para o WhatsApp. */
 export async function enviarPedidoWhatsapp(itens: ItemCarrinho[], observacao: string) {
   const { data, error } = await supabase.rpc('fertex_enviar_pedido_whatsapp', {
-    p_itens: itens.map((i) => ({ produto_id: i.produto_id, quantidade: i.quantidade })),
+    p_itens: itens.map((i) => ({ produto_id: i.produto_id, quantidade: i.quantidade, cor: i.cor ?? null })),
     p_observacao: observacao.trim() || null,
   })
   if (error) throw error
@@ -76,6 +84,7 @@ interface ItemDoPedido {
   quantidade: number
   preco_unitario: number
   unidade: Unidade
+  cor: string | null
 }
 
 export interface MeuPedido {

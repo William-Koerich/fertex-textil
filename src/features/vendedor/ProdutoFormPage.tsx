@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, ImagePlus, Trash } from 'lucide-react'
+import { ArrowLeft, ImagePlus, Plus, Trash, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
@@ -18,7 +18,7 @@ import {
 import type { Produto } from '@/lib/produtos'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button, buttonClass } from '@/components/ui/Button'
-import { Input, Select, Textarea } from '@/components/ui/Field'
+import { Input, inputClass, Select, Textarea } from '@/components/ui/Field'
 import { siglaUnidade, UNIDADES } from '@/lib/unidades'
 import type { Unidade } from '@/lib/unidades'
 import { LoadingState } from '@/components/ui/Spinner'
@@ -34,12 +34,13 @@ interface Form {
   estoque: string
   unidade: Unidade | ''
   minimo: string
+  cores: string[]
   categoria: string
   ativo: boolean
 }
 type Erros = Partial<Record<keyof Form | 'foto', string>>
 
-const vazio: Form = { nome: '', descricao: '', preco: '', estoque: '0', unidade: '', minimo: '', categoria: '', ativo: true }
+const vazio: Form = { nome: '', descricao: '', preco: '', estoque: '0', unidade: '', minimo: '', cores: [], categoria: '', ativo: true }
 
 function paraForm(p: Produto): Form {
   return {
@@ -49,6 +50,7 @@ function paraForm(p: Produto): Form {
     estoque: String(p.estoque),
     unidade: p.unidade,
     minimo: p.quantidade_minima ? String(p.quantidade_minima) : '',
+    cores: p.cores ?? [],
     categoria: p.categoria,
     ativo: p.ativo,
   }
@@ -73,6 +75,78 @@ function validar(f: Form): Erros {
   else if (Number(f.minimo) > 1_000_000) e.minimo = 'Quantidade mínima muito alta.'
   if (!f.categoria.trim()) e.categoria = 'Informe a categoria.'
   return e
+}
+
+const MAX_CORES = 50
+
+/** Lista de cores do produto (opcional). O estoque continua sendo do produto, não de cada cor. */
+function CoresEditor({ cores, onChange }: { cores: string[]; onChange: (c: string[]) => void }) {
+  const [nova, setNova] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+
+  function adicionar() {
+    const cor = nova.trim().replace(/\s+/g, ' ')
+    if (!cor) return
+    if (cor.length > 60) return setErro('O nome da cor pode ter no máximo 60 caracteres.')
+    if (cores.some((c) => c.toLocaleLowerCase('pt-BR') === cor.toLocaleLowerCase('pt-BR'))) return setErro(`A cor "${cor}" já foi adicionada.`)
+    if (cores.length >= MAX_CORES) return setErro(`No máximo ${MAX_CORES} cores por produto.`)
+    onChange([...cores, cor])
+    setNova('')
+    setErro(null)
+  }
+
+  return (
+    <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div>
+        <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">Cores disponíveis</span>
+        <span className="block text-xs text-slate-500 dark:text-slate-400">
+          Opcional. O cliente escolhe uma destas cores ao pedir. O estoque é o mesmo para todas as cores.
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={nova}
+          onChange={(e) => {
+            setNova(e.target.value)
+            setErro(null)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              adicionar()
+            }
+          }}
+          placeholder="Ex.: Azul marinho"
+          aria-label="Nome da cor"
+          maxLength={60}
+          className={inputClass(!!erro)}
+        />
+        <Button variant="secondary" onClick={adicionar} disabled={!nova.trim()}>
+          <Plus className="h-4 w-4" aria-hidden /> Adicionar
+        </Button>
+      </div>
+      {erro && <p className="text-sm text-red-600 dark:text-red-400">{erro}</p>}
+      {cores.length ? (
+        <ul className="flex flex-wrap gap-2" aria-label="Cores do produto">
+          {cores.map((c) => (
+            <li key={c} className="inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pr-1 pl-3 text-sm dark:bg-slate-800">
+              {c}
+              <button
+                type="button"
+                onClick={() => onChange(cores.filter((x) => x !== c))}
+                aria-label={`Remover cor ${c}`}
+                className="rounded-full p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Sem variação de cor.</p>
+      )}
+    </div>
+  )
 }
 
 export default function ProdutoFormPage() {
@@ -151,6 +225,7 @@ export default function ProdutoFormPage() {
         unidade: form.unidade as Unidade,
         // 1 ou vazio = sem mínimo
         quantidade_minima: Number(form.minimo) > 1 ? Number(form.minimo) : null,
+        cores: form.cores,
         categoria: form.categoria.trim(),
         ativo: form.ativo,
         foto_url,
@@ -294,6 +369,7 @@ export default function ProdutoFormPage() {
             error={erros.minimo}
             hint="Opcional. Deixe em branco para o cliente comprar qualquer quantidade."
           />
+          <CoresEditor cores={form.cores} onChange={(c) => set('cores', c)} />
           <Input
             label="Categoria"
             list="categorias"

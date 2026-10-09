@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { CircleCheck, LogIn, MessageCircle, ShoppingCart, Trash } from 'lucide-react'
-import { useCart } from '@/contexts/CartContext'
+import { chaveItem, useCart } from '@/contexts/CartContext'
 import type { ItemCarrinho } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -69,7 +69,7 @@ function PedidoEnviadoView({ pedidos, observacao, comprador }: { pedidos: Pedido
 }
 
 export default function CarrinhoPage() {
-  const { itens, subtotal, totalItens, alterarQuantidade, remover, limpar, sincronizar } = useCart()
+  const { itens, subtotal, totalItens, totalDoProduto, alterarQuantidade, remover, limpar, sincronizar } = useCart()
   const { session, profile } = useAuth()
   const [atualizando, setAtualizando] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -78,7 +78,7 @@ export default function CarrinhoPage() {
   const [enviados, setEnviados] = useState<PedidoEnviado[] | null>(null)
   const [vendedores, setVendedores] = useState<Map<string, string>>(new Map())
 
-  const ids = itens.map((i) => i.produto_id).sort().join(',')
+  const ids = [...new Set(itens.map((i) => i.produto_id))].sort().join(',')
 
   async function atualizarDoServidor() {
     if (!ids) return
@@ -109,8 +109,11 @@ export default function CarrinhoPage() {
     return [...m.entries()]
   }, [itens])
 
-  const abaixoDoMinimo = (i: ItemCarrinho) => i.quantidade < (i.quantidade_minima ?? 1)
-  const problemas = itens.filter((i) => i.estoque <= 0 || i.quantidade > i.estoque || abaixoDoMinimo(i))
+  // Estoque e pedido mínimo valem para o produto inteiro (soma das cores)
+  const abaixoDoMinimo = (i: ItemCarrinho) => totalDoProduto(i.produto_id) < (i.quantidade_minima ?? 1)
+  const excedeEstoque = (i: ItemCarrinho) => totalDoProduto(i.produto_id) > i.estoque
+  const corInvalida = (i: ItemCarrinho) => (i.cores?.length ?? 0) > 0 && (!i.cor || !i.cores!.includes(i.cor))
+  const problemas = itens.filter((i) => i.estoque <= 0 || excedeEstoque(i) || abaixoDoMinimo(i) || corInvalida(i))
   const ehComprador = profile?.perfil === 'comprador'
 
   async function enviar() {
@@ -124,7 +127,7 @@ export default function CarrinhoPage() {
     } catch (e) {
       setErro(mensagemErro(e, 'Não foi possível enviar o pedido. Tente novamente.'))
       const hint = (e as { hint?: string }).hint
-      if (hint === 'estoque' || hint === 'indisponivel' || hint === 'minimo') await atualizarDoServidor()
+      if (hint === 'estoque' || hint === 'indisponivel' || hint === 'minimo' || hint === 'cor') await atualizarDoServidor()
     } finally {
       setEnviando(false)
     }
@@ -166,13 +169,16 @@ export default function CarrinhoPage() {
               )}
               <ul className="space-y-3">
                 {lista.map((i) => {
+                  const k = chaveItem(i)
                   const indisponivel = i.estoque <= 0
-                  const excede = !indisponivel && i.quantidade > i.estoque
+                  const excede = !indisponivel && excedeEstoque(i)
+                  const semCor = !indisponivel && corInvalida(i)
+                  const outrasCores = totalDoProduto(i.produto_id) - i.quantidade
                   return (
                     <li
-                      key={i.produto_id}
+                      key={k}
                       className={`flex gap-3 rounded-xl border bg-white p-3 dark:bg-slate-900 ${
-                        indisponivel || excede ? 'border-amber-300 dark:border-amber-800' : 'border-slate-200 dark:border-slate-800'
+                        indisponivel || excede || semCor || abaixoDoMinimo(i) ? 'border-amber-300 dark:border-amber-800' : 'border-slate-200 dark:border-slate-800'
                       }`}
                     >
                       <Link to={`/loja/${i.produto_id}`} className="shrink-0">
@@ -184,11 +190,12 @@ export default function CarrinhoPage() {
                             <Link to={`/loja/${i.produto_id}`} className="line-clamp-2 font-medium hover:underline">
                               {i.nome}
                             </Link>
+                            {i.cor && <p className="text-sm font-medium">Cor: {i.cor}</p>}
                             <p className="text-sm text-slate-500 dark:text-slate-400">{formatarPrecoPor(i.preco, i.unidade)}</p>
                           </div>
                           <IconButton
-                            onClick={() => remover(i.produto_id)}
-                            aria-label={`Remover ${i.nome}`}
+                            onClick={() => remover(k)}
+                            aria-label={`Remover ${i.nome}${i.cor ? ` (${i.cor})` : ''}`}
                             title="Remover"
                             className="-mt-1 -mr-1 shrink-0 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                           >
@@ -197,16 +204,24 @@ export default function CarrinhoPage() {
                         </div>
                         {indisponivel ? (
                           <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Esgotado ou indisponível. Remova do carrinho.</p>
+                        ) : semCor ? (
+                          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                            Esta cor não está mais disponível. Remova e{' '}
+                            <Link to={`/loja/${i.produto_id}`} className="underline">
+                              escolha outra cor
+                            </Link>
+                            .
+                          </p>
                         ) : (
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <QuantityStepper
                                 size="sm"
-                                min={i.quantidade_minima ?? 1}
+                                min={Math.max(1, (i.quantidade_minima ?? 1) - outrasCores)}
                                 value={i.quantidade}
-                                max={Math.max(i.estoque, i.quantidade)}
-                                onChange={(v) => alterarQuantidade(i.produto_id, v)}
-                                label={`Quantidade de ${i.nome}`}
+                                max={Math.max(i.estoque - outrasCores, i.quantidade)}
+                                onChange={(v) => alterarQuantidade(k, v)}
+                                label={`Quantidade de ${i.nome}${i.cor ? ` (${i.cor})` : ''}`}
                               />
                               <span className="text-sm text-slate-500 dark:text-slate-400">{siglaUnidade(i.unidade)}</span>
                             </div>
@@ -216,13 +231,14 @@ export default function CarrinhoPage() {
                         {(i.quantidade_minima ?? 1) > 1 && !indisponivel && (
                           <p className={`text-xs ${abaixoDoMinimo(i) ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
                             Pedido mínimo: {formatarQuantidade(i.quantidade_minima!, i.unidade)}
+                            {(i.cores?.length ?? 0) > 0 && ' (somando as cores)'}
                             {abaixoDoMinimo(i) && (
                               <>
                                 {' '}
                                 <button
                                   type="button"
                                   className="font-semibold underline"
-                                  onClick={() => alterarQuantidade(i.produto_id, i.quantidade_minima!)}
+                                  onClick={() => alterarQuantidade(k, i.quantidade_minima! - outrasCores)}
                                 >
                                   Ajustar
                                 </button>
@@ -232,8 +248,9 @@ export default function CarrinhoPage() {
                         )}
                         {excede && (
                           <p className="text-sm text-amber-700 dark:text-amber-400">
-                            Só restam {formatarQuantidade(i.estoque, i.unidade)}.{' '}
-                            <button type="button" className="font-semibold underline" onClick={() => alterarQuantidade(i.produto_id, i.estoque)}>
+                            Só restam {formatarQuantidade(i.estoque, i.unidade)}
+                            {outrasCores > 0 && ' (somando as cores)'}.{' '}
+                            <button type="button" className="font-semibold underline" onClick={() => alterarQuantidade(k, i.estoque - outrasCores)}>
                               Ajustar
                             </button>
                           </p>
