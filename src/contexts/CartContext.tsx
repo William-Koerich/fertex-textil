@@ -11,6 +11,7 @@ export interface ItemCarrinho {
   foto_url: string | null
   estoque: number
   vendedor_id?: string
+  unidade?: Produto['unidade']
 }
 
 interface CartValue {
@@ -94,6 +95,7 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
         foto_url: p.foto_url,
         estoque: p.estoque,
         vendedor_id: p.vendedor_id,
+        unidade: p.unidade,
       }
       return atual ? lista.map((i) => (i.produto_id === p.id ? item : i)) : [...lista, item]
     })
@@ -117,7 +119,7 @@ export function CartProvider({ userId, children }: { userId: string | null; chil
       lista.flatMap((i) => {
         const p = porId.get(i.produto_id)
         if (!p) return [{ ...i, estoque: 0 }]
-        return [{ ...i, nome: p.nome, preco: p.preco, foto_url: p.foto_url, estoque: p.ativo ? p.estoque : 0, vendedor_id: p.vendedor_id }]
+        return [{ ...i, nome: p.nome, preco: p.preco, foto_url: p.foto_url, estoque: p.ativo && !p.excluido_em ? p.estoque : 0, vendedor_id: p.vendedor_id, unidade: p.unidade }]
       }),
     )
   }, [])

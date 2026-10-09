@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { mensagemErro } from '@/lib/errors'
-import { formatarMoeda, formatarNumero, parseMoeda } from '@/lib/format'
+import { formatarMoeda, parseMoeda } from '@/lib/format'
 import { registrarVenda } from '@/lib/pedidos'
 import type { Produto } from '@/lib/produtos'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/States'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { formatarPrecoPor, formatarQuantidade, siglaUnidade } from '@/lib/unidades'
 
 interface Props {
   open: boolean
@@ -95,7 +96,7 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
         {produto ? (
           <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
             <p className="font-medium">{produto.nome}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{formatarNumero(produto.estoque)} em estoque</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{formatarQuantidade(produto.estoque, produto.unidade)} em estoque · {formatarPrecoPor(produto.preco, produto.unidade)}</p>
           </div>
         ) : (
           <Select
@@ -112,7 +113,7 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
             <option value="">Escolha o produto</option>
             {disponiveis.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.nome} ({formatarNumero(p.estoque)} em estoque)
+                {p.nome} ({formatarQuantidade(p.estoque, p.unidade)} em estoque)
               </option>
             ))}
           </Select>
@@ -123,11 +124,14 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
             <div className="flex items-end gap-4">
               <div>
                 <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Quantidade</span>
-                <QuantityStepper value={quantidade} max={selecionado.estoque} onChange={setQuantidade} label="Quantidade vendida" />
+                <div className="flex items-center gap-2">
+                  <QuantityStepper value={quantidade} max={selecionado.estoque} onChange={setQuantidade} label="Quantidade vendida" />
+                  <span className="text-sm text-slate-500 dark:text-slate-400">{siglaUnidade(selecionado.unidade)}</span>
+                </div>
               </div>
               <div className="flex-1">
                 <Input
-                  label="Preço unitário (R$)"
+                  label={`Preço por ${siglaUnidade(selecionado.unidade)} (R$)`}
                   inputMode="decimal"
                   value={preco}
                   onChange={(e) => {

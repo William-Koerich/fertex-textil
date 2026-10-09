@@ -1,4 +1,6 @@
-import { formatarMoeda, formatarNumero } from './format'
+import { formatarMoeda } from './format'
+import { formatarPrecoPor, formatarQuantidade } from './unidades'
+import type { Unidade } from './unidades'
 
 /**
  * Normaliza o que o usuário digitou para só dígitos com DDI.
@@ -25,7 +27,7 @@ export interface PedidoMensagem {
   pedido_id: string
   vendedor_nome: string
   total: number
-  itens: { nome: string; quantidade: number; preco_unitario: number }[]
+  itens: { nome: string; quantidade: number; preco_unitario: number; unidade?: Unidade }[]
   observacao?: string | null
 }
 
@@ -38,7 +40,8 @@ export function mensagemPedido(p: PedidoMensagem, comprador: string): string {
     '',
     `*Pedido #${codigoPedido(p.pedido_id)}*`,
     ...p.itens.map(
-      (i) => `• ${formatarNumero(i.quantidade)} × ${i.nome} (${formatarMoeda(i.preco_unitario)}) = ${formatarMoeda(i.quantidade * i.preco_unitario)}`,
+      (i) =>
+        `• ${formatarQuantidade(i.quantidade, i.unidade)} de ${i.nome} (${formatarPrecoPor(i.preco_unitario, i.unidade)}) = ${formatarMoeda(i.quantidade * i.preco_unitario)}`,
     ),
     '',
     `*Total: ${formatarMoeda(p.total)}*`,

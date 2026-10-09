@@ -71,6 +71,27 @@
       "when": 1791504786422,
       "tag": "0009_funcoes_whatsapp",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791542942250,
+      "tag": "0010_unidade_exclusao",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791542982527,
+      "tag": "0011_funcoes_unidade",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791543020059,
+      "tag": "0012_dashboard_unidade",
+      "breakpoints": true
     }
   ]
 }

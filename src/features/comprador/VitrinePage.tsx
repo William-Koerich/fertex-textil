@@ -8,11 +8,11 @@ import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { listarProdutosAtivos } from '@/lib/produtos'
 import type { Produto } from '@/lib/produtos'
-import { formatarMoeda } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { inputClass } from '@/components/ui/Field'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
+import { formatarPrecoPor, formatarQuantidade } from '@/lib/unidades'
 
 const normalizar = (s: string) =>
   s
@@ -53,20 +53,20 @@ function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vend
         <div className="flex flex-1 flex-col p-3 pb-14">
           <span className="text-xs text-slate-500 dark:text-slate-400">{produto.categoria}</span>
           <h2 className="line-clamp-2 text-sm font-medium">{produto.nome}</h2>
-          <span className="mt-1 font-bold">{formatarMoeda(produto.preco)}</span>
+          <span className="mt-1 font-bold">{formatarPrecoPor(produto.preco, produto.unidade)}</span>
           {vendedorNome && <span className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">por {vendedorNome}</span>}
         </div>
       </Link>
       {previa ? (
         <span className="absolute right-3 bottom-3 left-3 rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-          {esgotado ? 'Esgotado' : `${produto.estoque} em estoque`}
+          {esgotado ? 'Esgotado' : `${formatarQuantidade(produto.estoque, produto.unidade)} em estoque`}
         </span>
       ) : (
       <button
         type="button"
         disabled={esgotado || limite}
         onClick={() => {
-          if (adicionar(produto, 1)) toast(`${produto.nome} adicionado ao carrinho.`)
+          if (adicionar(produto, 1)) toast(`${formatarQuantidade(1, produto.unidade)} de ${produto.nome} adicionado ao carrinho.`)
         }}
         className="absolute right-3 bottom-3 left-3 inline-flex items-center justify-center gap-1 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-400"
         aria-label={esgotado ? `${produto.nome} esgotado` : `Adicionar ${produto.nome} ao carrinho`}

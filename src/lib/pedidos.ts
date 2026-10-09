@@ -1,5 +1,5 @@
 import type { ItemCarrinho } from '@/contexts/CartContext'
-import type { OrigemPedido, StatusPedido } from '@db/schema'
+import type { OrigemPedido, StatusPedido, Unidade } from '@db/schema'
 import { supabase } from './supabase'
 
 /** Rótulo e cores de cada situação do pedido */
@@ -19,6 +19,7 @@ export interface Venda {
   comprador_nome: string | null
   origem: OrigemPedido
   quantidade: number
+  unidade: Unidade
   preco_unitario: number
   total: number
 }
@@ -55,7 +56,7 @@ export interface PedidoEnviado {
   vendedor_nome: string
   whatsapp: string
   total: number
-  itens: { nome: string; quantidade: number; preco_unitario: number }[]
+  itens: { nome: string; quantidade: number; preco_unitario: number; unidade: Unidade }[]
 }
 
 /** Cria um pedido pendente por vendedor (sem baixar estoque) e devolve os dados para o WhatsApp. */
@@ -74,6 +75,7 @@ interface ItemDoPedido {
   foto_url: string | null
   quantidade: number
   preco_unitario: number
+  unidade: Unidade
 }
 
 export interface MeuPedido {
@@ -104,7 +106,7 @@ export interface PedidoRecebido {
   criado_em: string
   concluido_em: string | null
   comprador_nome: string | null
-  itens: (ItemDoPedido & { estoque: number })[]
+  itens: (ItemDoPedido & { estoque: number; excluido: boolean })[]
 }
 
 export async function listarPedidosRecebidos() {

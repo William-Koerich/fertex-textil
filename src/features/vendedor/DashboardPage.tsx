@@ -17,6 +17,7 @@ import {
 import { PageHeader } from '@/components/ui/PageHeader'
 import { LoadingState } from '@/components/ui/Spinner'
 import { ErrorState } from '@/components/ui/States'
+import { formatarQuantidade } from '@/lib/unidades'
 
 const PERIODOS = [7, 30, 90] as const
 
@@ -167,20 +168,20 @@ function RankingProdutos({ d, dias }: { d: Dashboard; dias: number }) {
       <h2 id="titulo-ranking" className="font-semibold">
         Mais vendidos
       </h2>
-      <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Top 5 por unidades · {dias} dias</p>
+      <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Top 5 por quantidade vendida · {dias} dias</p>
       {!d.top_produtos.length ? (
         <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">Nenhuma venda no período.</p>
       ) : (
         <ol className="space-y-4">
           {d.top_produtos.map((p, i) => (
-            <li key={p.produto_id} title={`${p.nome}: ${p.quantidade} un. · ${formatarMoeda(p.faturamento)}`}>
+            <li key={p.produto_id} title={`${p.nome}: ${formatarQuantidade(p.quantidade, p.unidade)} · ${formatarMoeda(p.faturamento)}`}>
               <div className="flex items-baseline justify-between gap-2 text-sm">
                 <span className="min-w-0 truncate">
                   <span className="mr-2 text-slate-400 tabular-nums">{i + 1}.</span>
                   <span className="font-medium">{p.nome}</span>
                 </span>
                 <span className="shrink-0 tabular-nums">
-                  <span className="font-semibold">{formatarNumero(p.quantidade)} un.</span>
+                  <span className="font-semibold">{formatarQuantidade(p.quantidade, p.unidade)}</span>
                   <span className="ml-2 text-slate-500 dark:text-slate-400">{formatarMoeda(p.faturamento)}</span>
                 </span>
               </div>
@@ -218,7 +219,7 @@ function EstoqueBaixo({ d }: { d: Dashboard }) {
                 }`}
               >
                 <TriangleAlert className="h-3 w-3" aria-hidden />
-                {p.estoque === 0 ? 'Esgotado' : `${formatarNumero(p.estoque)} un.`}
+                {p.estoque === 0 ? 'Esgotado' : formatarQuantidade(p.estoque, p.unidade)}
               </span>
             </li>
           ))}
@@ -300,7 +301,7 @@ export default function DashboardPage() {
                 {d.estoque_baixo.length > 0 && <TriangleAlert className="h-5 w-5 text-amber-500" aria-hidden />}
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {d.estoque_baixo.length ? 'produtos com 5 un. ou menos' : 'Nenhum produto em alerta'}
+                {d.estoque_baixo.length ? 'produtos com estoque de 5 ou menos' : 'Nenhum produto em alerta'}
               </p>
             </Link>
           </div>

@@ -16,6 +16,7 @@ import { LoadingState } from '@/components/ui/Spinner'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { intervaloDoPreset, PeriodoFiltro, PRESETS } from '@/components/PeriodoFiltro'
 import type { Preset } from '@/components/PeriodoFiltro'
+import { formatarPrecoPor, formatarQuantidade } from '@/lib/unidades'
 
 /** Nome do comprador (loja) ou do cliente da venda direta, com selo para vendas registradas manualmente */
 function Cliente({ v }: { v: Venda }) {
@@ -48,6 +49,9 @@ export default function VendasPage() {
     const lista = vendas.data ?? []
     return {
       quantidade: lista.reduce((s, v) => s + v.quantidade, 0),
+      itens: lista.length,
+      // Só soma quantidades no rodapé se todas forem da mesma unidade
+      unidade: new Set(lista.map((v) => v.unidade)).size === 1 ? lista[0].unidade : null,
       valor: lista.reduce((s, v) => s + Number(v.total), 0),
       pedidos: new Set(lista.map((v) => v.pedido_id)).size,
     }
@@ -128,7 +132,7 @@ export default function VendasPage() {
                 </div>
                 <div className="mt-1 flex justify-between gap-2 text-sm text-slate-500 dark:text-slate-400">
                   <span>
-                    {formatarNumero(v.quantidade)} × {formatarMoeda(Number(v.preco_unitario))}
+                    {formatarQuantidade(v.quantidade, v.unidade)} × {formatarPrecoPor(Number(v.preco_unitario), v.unidade)}
                   </span>
                   <span>{formatarDataHora(v.data)}</span>
                 </div>
@@ -161,8 +165,8 @@ export default function VendasPage() {
                     <td className="px-4 py-3">
                       <Cliente v={v} />
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatarNumero(v.quantidade)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatarMoeda(Number(v.preco_unitario))}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{formatarQuantidade(v.quantidade, v.unidade)}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{formatarPrecoPor(Number(v.preco_unitario), v.unidade)}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatarMoeda(Number(v.total))}</td>
                   </tr>
                 ))}
@@ -184,7 +188,7 @@ export default function VendasPage() {
           <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:hidden dark:border-slate-800 dark:bg-slate-900/95">
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-500 dark:text-slate-400">
-                Total ({nomePeriodo}) · {formatarNumero(totais.quantidade)} un.
+                Total ({nomePeriodo}) · {formatarNumero(totais.itens)} {totais.itens === 1 ? 'venda' : 'vendas'}
               </span>
               <span className="text-lg font-bold">{formatarMoeda(totais.valor)}</span>
             </div>

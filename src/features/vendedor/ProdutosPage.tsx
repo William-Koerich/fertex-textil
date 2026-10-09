@@ -7,7 +7,7 @@ import { useAsync } from '@/lib/useAsync'
 import { mensagemErro } from '@/lib/errors'
 import { ESTOQUE_BAIXO, excluirProduto, listarMeusProdutos } from '@/lib/produtos'
 import type { Produto } from '@/lib/produtos'
-import { formatarMoeda, formatarNumero } from '@/lib/format'
+import { formatarNumero } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { buttonClass, IconButton } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
@@ -16,6 +16,7 @@ import { EmptyState, ErrorState } from '@/components/ui/States'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
 import { RegistrarVendaDialog } from './RegistrarVendaDialog'
+import { formatarPrecoPor, formatarQuantidade } from '@/lib/unidades'
 
 const normalizar = (s: string) =>
   s
@@ -68,9 +69,9 @@ export default function ProdutosPage() {
     if (!excluindo) return
     setProcessando(true)
     try {
-      await excluirProduto(excluindo)
+      const r = await excluirProduto(excluindo)
       setData((lista) => lista?.filter((p) => p.id !== excluindo.id))
-      toast(`"${excluindo.nome}" foi excluído.`)
+      toast(r === 'arquivado' ? `"${excluindo.nome}" foi excluído. As vendas dele continuam no histórico.` : `"${excluindo.nome}" foi excluído.`)
       setExcluindo(null)
     } catch (e) {
       toast(mensagemErro(e), 'erro')
@@ -143,8 +144,8 @@ export default function ProdutosPage() {
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{p.categoria}</p>
                     <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm">
-                      <span className="font-semibold">{formatarMoeda(p.preco)}</span>
-                      <span className="text-slate-500 dark:text-slate-400">Estoque: {formatarNumero(p.estoque)}</span>
+                      <span className="font-semibold">{formatarPrecoPor(p.preco, p.unidade)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Estoque: {formatarQuantidade(p.estoque, p.unidade)}</span>
                       <StatusBadge produto={p} />
                     </div>
                     <button
@@ -204,7 +205,9 @@ export default function ProdutosPage() {
         onCancel={() => setExcluindo(null)}
       >
         <p>
-          <strong>{excluindo?.nome}</strong> será removido permanentemente. Esta ação não pode ser desfeita.
+          <strong>{excluindo?.nome}</strong> sai da sua lista e da loja. Esta ação não pode ser desfeita.
+        </p>
+        <p className="mt-2">Se o produto já teve vendas, elas continuam no painel e em "Produtos vendidos".
         </p>
       </ConfirmDialog>
     </>

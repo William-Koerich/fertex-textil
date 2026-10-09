@@ -1,7 +1,6 @@
 import type { Produto } from '@db/schema'
 import { BUCKET_PRODUTOS, supabase } from './supabase'
 import { redimensionarImagem } from './imagem'
-import { AppError } from './errors'
 
 export type { Produto }
 
@@ -18,13 +17,14 @@ export const CATEGORIAS_SUGERIDAS = [
 
 export const ESTOQUE_BAIXO = 5
 
-export type ProdutoInput = Pick<Produto, 'nome' | 'descricao' | 'preco' | 'estoque' | 'categoria' | 'ativo'>
+export type ProdutoInput = Pick<Produto, 'nome' | 'descricao' | 'preco' | 'estoque' | 'unidade' | 'categoria' | 'ativo'>
 
 export async function listarMeusProdutos(vendedorId: string) {
   const { data, error } = await supabase
     .from('fertex_produtos')
     .select('*')
     .eq('vendedor_id', vendedorId)
+    .is('excluido_em', null)
     .order('criado_em', { ascending: false })
   if (error) throw error
   return data as Produto[]
@@ -41,6 +41,7 @@ export async function listarProdutosAtivos() {
     .from('fertex_produtos')
     .select('*')
     .eq('ativo', true)
+    .is('excluido_em', null)
     .order('criado_em', { ascending: false })
   if (error) throw error
   return data as Produto[]
@@ -84,13 +85,25 @@ export async function atualizarProduto(id: string, input: Partial<ProdutoInput> 
   return data as Produto
 }
 
-export async function excluirProduto(produto: Produto) {
+/**
+ * Exclui o produto. Se ele já tem vendas, não dá para apagar do banco sem perder o histórico:
+ * nesse caso ele é marcado como excluído (some da lista e da loja) e as vendas continuam no painel.
+ * Retorna 'apagado' ou 'arquivado'.
+ */
+export async function excluirProduto(produto: Produto): Promise<'apagado' | 'arquivado'> {
   const { error, count } = await supabase.from('fertex_produtos').delete({ count: 'exact' }).eq('id', produto.id)
-  if (error) {
-    if (error.code === '23503')
-      throw new AppError('Este produto já tem vendas e não pode ser excluído. Desative-o para tirá-lo da vitrine.')
-    throw error
+  if (error?.code === '23503') {
+    const r = await supabase
+      .from('fertex_produtos')
+      .update({ excluido_em: new Date().toISOString(), ativo: false })
+      .eq('id', produto.id)
+      .select('id')
+    if (r.error) throw r.error
+    if (!r.data?.length) throw { code: '42501' }
+    return 'arquivado'
   }
+  if (error) throw error
   if (!count) throw { code: '42501' }
   await removerFoto(produto.foto_url)
+  return 'apagado'
 }

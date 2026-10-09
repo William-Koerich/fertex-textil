@@ -18,7 +18,9 @@ import {
 import type { Produto } from '@/lib/produtos'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button, buttonClass } from '@/components/ui/Button'
-import { Input, Textarea } from '@/components/ui/Field'
+import { Input, Select, Textarea } from '@/components/ui/Field'
+import { siglaUnidade, UNIDADES } from '@/lib/unidades'
+import type { Unidade } from '@/lib/unidades'
 import { LoadingState } from '@/components/ui/Spinner'
 import { Alert, EmptyState, ErrorState } from '@/components/ui/States'
 
@@ -30,12 +32,13 @@ interface Form {
   descricao: string
   preco: string
   estoque: string
+  unidade: Unidade | ''
   categoria: string
   ativo: boolean
 }
 type Erros = Partial<Record<keyof Form | 'foto', string>>
 
-const vazio: Form = { nome: '', descricao: '', preco: '', estoque: '0', categoria: '', ativo: true }
+const vazio: Form = { nome: '', descricao: '', preco: '', estoque: '0', unidade: '', categoria: '', ativo: true }
 
 function paraForm(p: Produto): Form {
   return {
@@ -43,6 +46,7 @@ function paraForm(p: Produto): Form {
     descricao: p.descricao,
     preco: p.preco.toFixed(2).replace('.', ','),
     estoque: String(p.estoque),
+    unidade: p.unidade,
     categoria: p.categoria,
     ativo: p.ativo,
   }
@@ -61,6 +65,7 @@ function validar(f: Form): Erros {
   else if (preco > 9_999_999) e.preco = 'Preço muito alto.'
   if (!/^\d+$/.test(f.estoque.trim())) e.estoque = 'Informe um número inteiro igual ou maior que zero.'
   else if (Number(f.estoque) > 1_000_000) e.estoque = 'Estoque muito alto.'
+  if (!f.unidade) e.unidade = 'Escolha a unidade de medida.'
   if (!f.categoria.trim()) e.categoria = 'Informe a categoria.'
   return e
 }
@@ -138,6 +143,7 @@ export default function ProdutoFormPage() {
         descricao: form.descricao.trim(),
         preco: parseMoeda(form.preco),
         estoque: Number(form.estoque),
+        unidade: form.unidade as Unidade,
         categoria: form.categoria.trim(),
         ativo: form.ativo,
         foto_url,
@@ -164,7 +170,7 @@ export default function ProdutoFormPage() {
 
   if (editando && carregamento.loading) return <LoadingState label="Carregando produto…" />
   if (editando && carregamento.error) return <ErrorState message={carregamento.error} onRetry={carregamento.reload} />
-  if (editando && (!original || original.vendedor_id !== profile?.id))
+  if (editando && (!original || original.vendedor_id !== profile?.id || original.excluido_em))
     return (
       <>
         {voltar}
@@ -241,9 +247,23 @@ export default function ProdutoFormPage() {
             error={erros.descricao}
             hint="Opcional. Detalhes como composição, largura, cor…"
           />
+          <Select
+            label="Unidade de medida"
+            value={form.unidade}
+            onChange={(e) => set('unidade', e.target.value as Unidade | '')}
+            error={erros.unidade}
+            hint="Como o produto é vendido. Preço e estoque usam esta unidade."
+          >
+            <option value="">Escolha a unidade</option>
+            {UNIDADES.map((u) => (
+              <option key={u.valor} value={u.valor}>
+                {u.label}
+              </option>
+            ))}
+          </Select>
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Preço (R$)"
+              label={form.unidade ? `Preço por ${siglaUnidade(form.unidade)} (R$)` : 'Preço (R$)'}
               inputMode="decimal"
               placeholder="0,00"
               value={form.preco}
@@ -251,7 +271,7 @@ export default function ProdutoFormPage() {
               error={erros.preco}
             />
             <Input
-              label="Estoque"
+              label={form.unidade ? `Estoque (${siglaUnidade(form.unidade)})` : 'Estoque'}
               inputMode="numeric"
               value={form.estoque}
               onChange={(e) => set('estoque', e.target.value.replace(/\D/g, ''))}

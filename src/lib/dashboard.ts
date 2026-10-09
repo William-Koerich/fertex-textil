@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { ESTOQUE_BAIXO } from './produtos'
+import type { Unidade } from './unidades'
 
 export interface Dashboard {
   inicio: string
@@ -12,8 +13,8 @@ export interface Dashboard {
   vendas_periodo_anterior: number
   itens_periodo: number
   serie: { dia: string; faturamento: number; vendas: number }[]
-  top_produtos: { produto_id: string; nome: string; quantidade: number; faturamento: number }[]
-  estoque_baixo: { id: string; nome: string; estoque: number }[]
+  top_produtos: { produto_id: string; nome: string; unidade: Unidade; quantidade: number; faturamento: number }[]
+  estoque_baixo: { id: string; nome: string; estoque: number; unidade: Unidade }[]
 }
 
 export async function carregarDashboard(dias: number) {

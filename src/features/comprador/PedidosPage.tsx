@@ -15,6 +15,7 @@ import { LoadingState } from '@/components/ui/Spinner'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
+import { formatarPrecoPor, formatarQuantidade } from '@/lib/unidades'
 
 
 export default function PedidosPage() {
@@ -81,7 +82,7 @@ export default function PedidosPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{i.nome}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {formatarNumero(i.quantidade)} × {formatarMoeda(i.preco_unitario)}
+                          {formatarQuantidade(i.quantidade, i.unidade)} × {formatarPrecoPor(i.preco_unitario, i.unidade)}
                         </p>
                       </div>
                       <span className="text-sm font-medium tabular-nums">{formatarMoeda(i.quantidade * i.preco_unitario)}</span>

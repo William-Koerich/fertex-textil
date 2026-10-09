@@ -7,12 +7,13 @@ import { carregarVendedores } from '@/lib/vendedores'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { buscarProduto, ESTOQUE_BAIXO } from '@/lib/produtos'
-import { formatarMoeda, formatarNumero } from '@/lib/format'
+import { formatarMoeda } from '@/lib/format'
 import { Button, buttonClass } from '@/components/ui/Button'
 import { LoadingState } from '@/components/ui/Spinner'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
+import { formatarQuantidade, siglaUnidade, UNIDADES } from '@/lib/unidades'
 
 export default function ProdutoDetalhePage() {
   const { id } = useParams()
@@ -74,7 +75,11 @@ export default function ProdutoDetalhePage() {
               </Link>
             </p>
           )}
-          <p className="mt-3 text-3xl font-bold text-brand-700 dark:text-brand-300">{formatarMoeda(produto.preco)}</p>
+          <p className="mt-3 text-3xl font-bold text-brand-700 dark:text-brand-300">
+            {formatarMoeda(produto.preco)}
+            <span className="text-lg font-medium text-slate-500 dark:text-slate-400"> / {siglaUnidade(produto.unidade)}</span>
+          </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Preço por {UNIDADES.find((u) => u.valor === produto.unidade)?.label.toLowerCase()}</p>
 
           <p className="mt-2 text-sm">
             {esgotado ? (
@@ -82,9 +87,9 @@ export default function ProdutoDetalhePage() {
                 Esgotado
               </span>
             ) : produto.estoque <= ESTOQUE_BAIXO ? (
-              <span className="font-medium text-amber-700 dark:text-amber-400">Últimas {formatarNumero(produto.estoque)} unidades!</span>
+              <span className="font-medium text-amber-700 dark:text-amber-400">Restam só {formatarQuantidade(produto.estoque, produto.unidade)}!</span>
             ) : (
-              <span className="text-slate-500 dark:text-slate-400">{formatarNumero(produto.estoque)} disponíveis</span>
+              <span className="text-slate-500 dark:text-slate-400">{formatarQuantidade(produto.estoque, produto.unidade)} disponíveis</span>
             )}
           </p>
 
@@ -98,7 +103,7 @@ export default function ProdutoDetalhePage() {
           <div className="mt-8 space-y-3">
             {noCarrinho > 0 && (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Você já tem {formatarNumero(noCarrinho)} no{' '}
+                Você já tem {formatarQuantidade(noCarrinho, produto.unidade)} no{' '}
                 <Link to="/carrinho" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
                   carrinho
                 </Link>
@@ -119,13 +124,16 @@ export default function ProdutoDetalhePage() {
               </Link>
             ) : (
               <div className="flex gap-3">
-                <QuantityStepper value={Math.min(qtd, disponivel)} max={disponivel} onChange={setQtd} label="Quantidade" />
+                <div className="flex items-center gap-2">
+                  <QuantityStepper value={Math.min(qtd, disponivel)} max={disponivel} onChange={setQtd} label="Quantidade" />
+                  <span className="text-sm text-slate-500 dark:text-slate-400">{siglaUnidade(produto.unidade)}</span>
+                </div>
                 <Button
                   className="flex-1"
                   onClick={() => {
                     const n = adicionar(produto, Math.min(qtd, disponivel))
                     if (n) {
-                      toast(`${n} × ${produto.nome} adicionado ao carrinho.`)
+                      toast(`${formatarQuantidade(n, produto.unidade)} de ${produto.nome} adicionado ao carrinho.`)
                       setQtd(1)
                     }
                   }}

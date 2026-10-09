@@ -19,6 +19,7 @@ import { Alert, EmptyState } from '@/components/ui/States'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
 import { Spinner } from '@/components/ui/Spinner'
+import { formatarPrecoPor, formatarQuantidade, siglaUnidade } from '@/lib/unidades'
 
 const botaoWhatsapp =
   'inline-flex items-center justify-center gap-2 rounded-lg bg-[#1f8a4c] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#18733f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f8a4c] disabled:cursor-not-allowed disabled:opacity-60'
@@ -182,7 +183,7 @@ export default function CarrinhoPage() {
                             <Link to={`/loja/${i.produto_id}`} className="line-clamp-2 font-medium hover:underline">
                               {i.nome}
                             </Link>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">{formatarMoeda(i.preco)} cada</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">{formatarPrecoPor(i.preco, i.unidade)}</p>
                           </div>
                           <IconButton
                             onClick={() => remover(i.produto_id)}
@@ -197,19 +198,22 @@ export default function CarrinhoPage() {
                           <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Esgotado ou indisponível. Remova do carrinho.</p>
                         ) : (
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <QuantityStepper
-                              size="sm"
-                              value={i.quantidade}
-                              max={Math.max(i.estoque, i.quantidade)}
-                              onChange={(v) => alterarQuantidade(i.produto_id, v)}
-                              label={`Quantidade de ${i.nome}`}
-                            />
+                            <div className="flex items-center gap-2">
+                              <QuantityStepper
+                                size="sm"
+                                value={i.quantidade}
+                                max={Math.max(i.estoque, i.quantidade)}
+                                onChange={(v) => alterarQuantidade(i.produto_id, v)}
+                                label={`Quantidade de ${i.nome}`}
+                              />
+                              <span className="text-sm text-slate-500 dark:text-slate-400">{siglaUnidade(i.unidade)}</span>
+                            </div>
                             <span className="font-semibold">{formatarMoeda(i.preco * i.quantidade)}</span>
                           </div>
                         )}
                         {excede && (
                           <p className="text-sm text-amber-700 dark:text-amber-400">
-                            Só restam {formatarNumero(i.estoque)}.{' '}
+                            Só restam {formatarQuantidade(i.estoque, i.unidade)}.{' '}
                             <button type="button" className="font-semibold underline" onClick={() => alterarQuantidade(i.produto_id, i.estoque)}>
                               Ajustar
                             </button>

@@ -8,7 +8,7 @@ import { mensagemErro } from '@/lib/errors'
 import { cancelarPedido, concluirPedido, listarPedidosRecebidos, STATUS_PEDIDO } from '@/lib/pedidos'
 import type { PedidoRecebido } from '@/lib/pedidos'
 import { codigoPedido } from '@/lib/whatsapp'
-import { formatarDataHora, formatarMoeda, formatarNumero } from '@/lib/format'
+import { formatarDataHora, formatarMoeda } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { LoadingState } from '@/components/ui/Spinner'
@@ -16,6 +16,7 @@ import { EmptyState, ErrorState } from '@/components/ui/States'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
 import { EVENTO_PEDIDOS } from '@/components/layout/PerfilLayouts'
+import { formatarPrecoPor, formatarQuantidade } from '@/lib/unidades'
 
 const ABAS: { valor: StatusPedido; label: string }[] = [
   { valor: 'pendente', label: 'Aguardando' },
@@ -98,7 +99,7 @@ export default function PedidosRecebidosPage() {
         <ul className="space-y-3">
           {lista.map((p) => {
             const st = STATUS_PEDIDO[p.status]
-            const faltaEstoque = p.status === 'pendente' && p.itens.some((i) => i.estoque < i.quantidade)
+            const faltaEstoque = p.status === 'pendente' && p.itens.some((i) => i.excluido || i.estoque < i.quantidade)
             return (
               <li key={p.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
@@ -117,11 +118,11 @@ export default function PedidosRecebidosPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{i.nome}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {formatarNumero(i.quantidade)} × {formatarMoeda(i.preco_unitario)}
+                          {formatarQuantidade(i.quantidade, i.unidade)} × {formatarPrecoPor(i.preco_unitario, i.unidade)}
                           {p.status === 'pendente' && (
-                            <span className={i.estoque < i.quantidade ? 'font-semibold text-red-600 dark:text-red-400' : ''}>
+                            <span className={i.excluido || i.estoque < i.quantidade ? 'font-semibold text-red-600 dark:text-red-400' : ''}>
                               {' '}
-                              · {formatarNumero(i.estoque)} em estoque
+                              · {i.excluido ? 'produto excluído' : `${formatarQuantidade(i.estoque, i.unidade)} em estoque`}
                             </span>
                           )}
                         </p>
@@ -153,7 +154,7 @@ export default function PedidosRecebidosPage() {
                 </div>
                 {faltaEstoque && (
                   <p className="px-4 pb-3 text-sm text-red-600 dark:text-red-400">
-                    Estoque insuficiente para este pedido. Atualize o estoque do produto ou cancele o pedido.
+                    Estoque insuficiente ou produto excluído. Atualize o estoque ou cancele o pedido.
                   </p>
                 )}
               </li>

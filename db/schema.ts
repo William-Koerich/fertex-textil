@@ -25,6 +25,9 @@ export const statusPedidoEnum = pgEnum('fertex_status_pedido', ['pendente', 'con
 /** loja: compra concluída no app · manual: venda registrada pelo vendedor · whatsapp: pedido enviado pelo comprador e confirmado pelo vendedor */
 export const origemPedidoEnum = pgEnum('fertex_origem_pedido', ['loja', 'manual', 'whatsapp'])
 
+/** Unidade de medida em que o produto é vendido (preço e estoque são por esta unidade) */
+export const unidadeEnum = pgEnum('fertex_unidade', ['kg', 'litro', 'saco', 'unidade', 'caixa', 'rolo', 'metro'])
+
 const criadoEm = () => timestamp('criado_em', { withTimezone: true, mode: 'string' }).notNull().defaultNow()
 
 export const profiles = pgTable(
@@ -68,10 +71,13 @@ export const produtos = pgTable(
     descricao: text('descricao').notNull().default(''),
     preco: numeric('preco', { precision: 12, scale: 2, mode: 'number' }).notNull(),
     estoque: integer('estoque').notNull().default(0),
+    unidade: unidadeEnum('unidade').notNull().default('unidade'),
     categoria: text('categoria').notNull(),
     foto_url: text('foto_url'),
     ativo: boolean('ativo').notNull().default(true),
     criado_em: criadoEm(),
+    /** Produto excluído que já tinha vendas: some da lista e da loja, mas o histórico de vendas é mantido */
+    excluido_em: timestamp('excluido_em', { withTimezone: true, mode: 'string' }),
   },
   (t) => [
     index('fertex_produtos_vendedor_idx').on(t.vendedor_id),
@@ -156,6 +162,8 @@ export const itensPedido = pgTable(
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     quantidade: integer('quantidade').notNull(),
+    /** unidade no momento da venda (copiada do produto por trigger) */
+    unidade: unidadeEnum('unidade').notNull().default('unidade'),
     preco_unitario: numeric('preco_unitario', { precision: 12, scale: 2, mode: 'number' }).notNull(),
   },
   (t) => [
@@ -175,6 +183,7 @@ export const itensPedido = pgTable(
 
 export type Perfil = (typeof perfilEnum.enumValues)[number]
 export type StatusPedido = (typeof statusPedidoEnum.enumValues)[number]
+export type Unidade = (typeof unidadeEnum.enumValues)[number]
 export type OrigemPedido = (typeof origemPedidoEnum.enumValues)[number]
 export type Profile = typeof profiles.$inferSelect
 export type Produto = typeof produtos.$inferSelect
