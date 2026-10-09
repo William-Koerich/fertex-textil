@@ -22,9 +22,9 @@ function Cliente({ v }: { v: Venda }) {
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
       <span>{v.comprador_nome ?? (v.origem === 'manual' ? 'Cliente não informado' : '—')}</span>
-      {v.origem === 'manual' && (
+      {v.origem !== 'loja' && (
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-          Venda direta
+          {v.origem === 'manual' ? 'Venda direta' : 'WhatsApp'}
         </span>
       )}
     </span>

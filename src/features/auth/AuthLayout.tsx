@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router'
+import { Store } from 'lucide-react'
 import { InstallButton } from '@/components/pwa/InstallButton'
 import { ThemeToggleButton } from '@/components/ThemeToggle'
 
@@ -22,7 +24,13 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         <p className="mt-1 mb-6 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
         {children}
       </div>
-      <div className="mt-6 w-full max-w-md">
+      <div className="mt-6 w-full max-w-md space-y-3">
+        <Link
+          to="/loja"
+          className="flex items-center justify-center gap-2 text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400"
+        >
+          <Store className="h-4 w-4" aria-hidden /> Ver a loja sem entrar
+        </Link>
         <InstallButton />
       </div>
     </main>

@@ -57,6 +57,20 @@
       "when": 1791504143233,
       "tag": "0007_registrar_venda",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791504767813,
+      "tag": "0008_pedido_whatsapp",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791504786422,
+      "tag": "0009_funcoes_whatsapp",
+      "breakpoints": true
     }
   ]
 }

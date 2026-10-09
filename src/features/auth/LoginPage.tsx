@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { useAuth } from '@/contexts/AuthContext'
 import { mensagemErro } from '@/lib/errors'
 import { Input } from '@/components/ui/Field'
@@ -12,6 +12,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function LoginPage() {
   const { signIn } = useAuth()
+  const location = useLocation()
+  const vindoDaLoja = /^\/(carrinho|loja)/.test((location.state as { from?: string } | null)?.from ?? '')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erros, setErros] = useState<{ email?: string; senha?: string }>({})
@@ -38,7 +40,10 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthLayout title="Entrar" subtitle="Acesse sua conta para vender ou comprar.">
+    <AuthLayout
+      title="Entrar"
+      subtitle={vindoDaLoja ? 'Entre para enviar seu pedido. Seu carrinho continua salvo.' : 'Acesse sua conta para vender ou comprar.'}
+    >
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {erro && <Alert>{erro}</Alert>}
         <Input
@@ -64,7 +69,7 @@ export default function LoginPage() {
       </form>
       <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
         Ainda não tem conta?{' '}
-        <Link to="/cadastro" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
+        <Link to="/cadastro" state={location.state} className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
           Criar conta
         </Link>
       </p>

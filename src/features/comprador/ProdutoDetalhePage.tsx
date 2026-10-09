@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, ShoppingCart } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { carregarVendedores } from '@/lib/vendedores'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { buscarProduto, ESTOQUE_BAIXO } from '@/lib/produtos'
@@ -19,6 +21,14 @@ export default function ProdutoDetalhePage() {
   const { adicionar, itens } = useCart()
   const toast = useToast()
   const [qtd, setQtd] = useState(1)
+  const { profile } = useAuth()
+  const previa = profile?.perfil === 'vendedor'
+  const [vendedores, setVendedores] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    carregarVendedores()
+      .then(setVendedores)
+      .catch(() => {})
+  }, [])
 
   const voltar = (
     <button type="button" onClick={() => (history.length > 1 ? navigate(-1) : navigate('/loja'))} className={buttonClass('ghost', '-ml-3 mb-3')}>
@@ -56,6 +66,14 @@ export default function ProdutoDetalhePage() {
         <div className="flex flex-col">
           <span className="text-sm text-slate-500 dark:text-slate-400">{produto.categoria}</span>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">{produto.nome}</h1>
+          {vendedores.get(produto.vendedor_id) && (
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Vendido por{' '}
+              <Link to={`/loja?vendedor=${produto.vendedor_id}`} className="font-medium text-brand-600 hover:underline dark:text-brand-400">
+                {vendedores.get(produto.vendedor_id)}
+              </Link>
+            </p>
+          )}
           <p className="mt-3 text-3xl font-bold text-brand-700 dark:text-brand-300">{formatarMoeda(produto.preco)}</p>
 
           <p className="mt-2 text-sm">
@@ -87,7 +105,11 @@ export default function ProdutoDetalhePage() {
                 .
               </p>
             )}
-            {esgotado ? (
+            {previa ? (
+              <p className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                Prévia: é assim que os clientes veem este produto.
+              </p>
+            ) : esgotado ? (
               <Button disabled className="w-full">
                 Esgotado
               </Button>

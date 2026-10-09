@@ -1,24 +1,43 @@
-import { Link, useLocation } from 'react-router'
-import { ClipboardList } from 'lucide-react'
+import { useState } from 'react'
+import { Link } from 'react-router'
+import { ClipboardList, MessageCircle } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
-import { listarMeusPedidos } from '@/lib/pedidos'
-import type { StatusPedido } from '@db/schema'
+import { mensagemErro } from '@/lib/errors'
+import { cancelarPedido, listarMeusPedidos, STATUS_PEDIDO } from '@/lib/pedidos'
+import type { MeuPedido } from '@/lib/pedidos'
+import { codigoPedido, linkWhatsapp, mensagemPedido } from '@/lib/whatsapp'
 import { formatarDataHora, formatarMoeda, formatarNumero } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { buttonClass } from '@/components/ui/Button'
 import { LoadingState } from '@/components/ui/Spinner'
 import { EmptyState, ErrorState } from '@/components/ui/States'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
 
-const STATUS: Record<StatusPedido, { label: string; cls: string }> = {
-  concluido: { label: 'Concluído', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' },
-  pendente: { label: 'Pendente', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' },
-  cancelado: { label: 'Cancelado', cls: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200' },
-}
 
 export default function PedidosPage() {
-  const { data, loading, error, reload } = useAsync(listarMeusPedidos, [])
-  const novoPedido = (useLocation().state as { novoPedido?: string } | null)?.novoPedido
+  const { profile } = useAuth()
+  const toast = useToast()
+  const { data, loading, error, reload, setData } = useAsync(listarMeusPedidos, [])
+  const [cancelando, setCancelando] = useState<MeuPedido | null>(null)
+  const [processando, setProcessando] = useState(false)
+
+  async function confirmarCancelamento() {
+    if (!cancelando) return
+    setProcessando(true)
+    try {
+      await cancelarPedido(cancelando.id)
+      setData((l) => l?.map((p) => (p.id === cancelando.id ? { ...p, status: 'cancelado' } : p)))
+      toast('Pedido cancelado.')
+    } catch (e) {
+      toast(mensagemErro(e), 'erro')
+    } finally {
+      setProcessando(false)
+      setCancelando(null)
+    }
+  }
 
   return (
     <>
@@ -31,7 +50,7 @@ export default function PedidosPage() {
         <EmptyState
           icon={ClipboardList}
           title="Você ainda não fez pedidos"
-          description="Quando você finalizar uma compra, ela aparece aqui."
+          description="Quando você enviar um pedido pelo WhatsApp, ele aparece aqui."
           action={
             <Link to="/loja" className={buttonClass('primary')}>
               Ir para a loja
@@ -41,21 +60,15 @@ export default function PedidosPage() {
       ) : (
         <ul className="space-y-3">
           {data.map((p) => {
-            const st = STATUS[p.status]
-            const novo = p.id === novoPedido
+            const st = STATUS_PEDIDO[p.status]
             const qtd = p.itens.reduce((s, i) => s + i.quantidade, 0)
             return (
-              <li
-                key={p.id}
-                className={`overflow-hidden rounded-xl border bg-white dark:bg-slate-900 ${
-                  novo ? 'border-brand-500 ring-2 ring-brand-500/30' : 'border-slate-200 dark:border-slate-800'
-                }`}
-              >
+              <li key={p.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
                   <div>
                     <p className="text-sm font-semibold">
-                      Pedido #{p.id.slice(0, 8).toUpperCase()}
-                      {novo && <span className="ml-2 text-xs font-medium text-brand-600 dark:text-brand-400">Novo</span>}
+                      Pedido #{codigoPedido(p.id)}
+                      {p.vendedor_nome && <span className="font-normal text-slate-500 dark:text-slate-400"> · {p.vendedor_nome}</span>}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{formatarDataHora(p.criado_em)}</p>
                   </div>
@@ -64,9 +77,9 @@ export default function PedidosPage() {
                 <ul className="divide-y divide-slate-100 px-4 dark:divide-slate-800">
                   {p.itens.map((i) => (
                     <li key={i.id} className="flex items-center gap-3 py-2.5">
-                      <ProdutoFoto url={i.produto?.foto_url ?? null} nome={i.produto?.nome ?? 'Produto'} className="h-12 w-12 shrink-0 rounded-lg" />
+                      <ProdutoFoto url={i.foto_url} nome={i.nome} className="h-12 w-12 shrink-0 rounded-lg" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{i.produto?.nome ?? 'Produto indisponível'}</p>
+                        <p className="truncate text-sm font-medium">{i.nome}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {formatarNumero(i.quantidade)} × {formatarMoeda(i.preco_unitario)}
                         </p>
@@ -75,17 +88,50 @@ export default function PedidosPage() {
                     </li>
                   ))}
                 </ul>
+                {p.observacao && <p className="px-4 pb-2 text-sm text-slate-500 dark:text-slate-400">Observação: {p.observacao}</p>}
                 <div className="flex justify-between bg-slate-50 px-4 py-3 text-sm dark:bg-slate-800/50">
                   <span className="text-slate-500 dark:text-slate-400">
                     {formatarNumero(qtd)} {qtd === 1 ? 'item' : 'itens'}
                   </span>
                   <span className="font-bold">Total {formatarMoeda(p.total)}</span>
                 </div>
+                {p.status === 'pendente' && (
+                  <div className="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+                    {p.vendedor_whatsapp && p.vendedor_nome && (
+                      <a
+                        href={linkWhatsapp(
+                          p.vendedor_whatsapp,
+                          mensagemPedido({ pedido_id: p.id, vendedor_nome: p.vendedor_nome, total: p.total, itens: p.itens, observacao: p.observacao }, profile?.nome ?? ''),
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-lg bg-[#1f8a4c] px-3 py-2 text-sm font-semibold text-white hover:bg-[#18733f]"
+                      >
+                        <MessageCircle className="h-4 w-4" aria-hidden /> Falar no WhatsApp
+                      </a>
+                    )}
+                    <button type="button" onClick={() => setCancelando(p)} className={buttonClass('ghost', 'px-3 py-2 text-red-600 dark:text-red-400')}>
+                      Cancelar pedido
+                    </button>
+                  </div>
+                )}
               </li>
             )
           })}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={!!cancelando}
+        title="Cancelar pedido?"
+        confirmLabel="Cancelar pedido"
+        danger
+        loading={processando}
+        onConfirm={confirmarCancelamento}
+        onCancel={() => setCancelando(null)}
+      >
+        <p>O vendedor verá o pedido #{cancelando && codigoPedido(cancelando.id)} como cancelado.</p>
+      </ConfirmDialog>
     </>
   )
 }

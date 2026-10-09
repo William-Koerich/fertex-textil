@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { ShoppingCart, Store } from 'lucide-react'
 import type { Perfil } from '@db/schema'
 import { useAuth } from '@/contexts/AuthContext'
@@ -25,7 +25,10 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmacao, setConfirmacao] = useState('')
-  const [perfil, setPerfil] = useState<Perfil | null>(null)
+  const location = useLocation()
+  // Quem chega pela loja/carrinho já começa como comprador
+  const vindoDaLoja = /^\/(carrinho|loja)/.test((location.state as { from?: string } | null)?.from ?? '')
+  const [perfil, setPerfil] = useState<Perfil | null>(vindoDaLoja ? 'comprador' : null)
   const [erros, setErros] = useState<Erros>({})
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -60,6 +63,7 @@ export default function SignupPage() {
         <Alert kind="info">Abra o link do e-mail para ativar sua conta e depois faça login.</Alert>
         <Link
           to="/entrar"
+          state={location.state}
           className="mt-6 block text-center text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400"
         >
           Ir para o login
@@ -138,7 +142,7 @@ export default function SignupPage() {
       </form>
       <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
         Já tem conta?{' '}
-        <Link to="/entrar" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
+        <Link to="/entrar" state={location.state} className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
           Entrar
         </Link>
       </p>

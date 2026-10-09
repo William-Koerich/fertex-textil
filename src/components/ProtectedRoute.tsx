@@ -46,7 +46,7 @@ export function PublicOnly({ children }: { children: ReactNode }) {
 export function HomeRedirect() {
   const { session, profile, loading } = useAuth()
   if (loading) return <FullScreenLoading />
-  if (!session) return <Navigate to="/entrar" replace />
+  if (!session) return <Navigate to="/loja" replace />
   if (!profile) return <PerfilIndisponivel />
   return <Navigate to={rotaInicial(profile.perfil)} replace />
 }

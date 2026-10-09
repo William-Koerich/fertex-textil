@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
 import { createBrowserRouter, Outlet } from 'react-router'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import { CartProvider } from '@/contexts/CartContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { HomeRedirect, PublicOnly, RequireAuth } from '@/components/ProtectedRoute'
-import { CompradorLayout, VendedorLayout } from '@/components/layout/PerfilLayouts'
+import { LojaLayout, VendedorLayout } from '@/components/layout/PerfilLayouts'
 import LoginPage from '@/features/auth/LoginPage'
 import SignupPage from '@/features/auth/SignupPage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -18,16 +20,31 @@ import ProdutoDetalhePage from '@/features/comprador/ProdutoDetalhePage'
 import CarrinhoPage from '@/features/comprador/CarrinhoPage'
 import PedidosPage from '@/features/comprador/PedidosPage'
 import VendasPage from '@/features/vendedor/VendasPage'
+import PedidosRecebidosPage from '@/features/vendedor/PedidosRecebidosPage'
+import PerfilPage from '@/features/vendedor/PerfilPage'
+
+/** Carrinho do comprador logado ou do visitante (o do visitante é levado para a conta ao entrar). */
+function CarrinhoRaiz({ children }: { children: ReactNode }) {
+  const { profile } = useAuth()
+  const userId = profile?.perfil === 'comprador' ? profile.id : null
+  return (
+    <CartProvider key={userId ?? 'anon'} userId={userId}>
+      {children}
+    </CartProvider>
+  )
+}
 
 function Root() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <ToastProvider>
-          <OfflineBanner />
-          <Outlet />
-          <UpdatePrompt />
-        </ToastProvider>
+        <CarrinhoRaiz>
+          <ToastProvider>
+            <OfflineBanner />
+            <Outlet />
+            <UpdatePrompt />
+          </ToastProvider>
+        </CarrinhoRaiz>
       </AuthProvider>
     </ThemeProvider>
   )
@@ -58,19 +75,25 @@ export const router = createBrowserRouter([
           { path: 'produtos/novo', element: <ProdutoFormPage /> },
           { path: 'produtos/:id/editar', element: <ProdutoFormPage /> },
           { path: 'vendas', element: <VendasPage /> },
+          { path: 'pedidos-recebidos', element: <PedidosRecebidosPage /> },
+          { path: 'perfil', element: <PerfilPage /> },
         ],
       },
       {
-        element: (
-          <RequireAuth perfil="comprador">
-            <CompradorLayout />
-          </RequireAuth>
-        ),
+        // Loja pública: navegar e montar o carrinho não exige login; só enviar o pedido
+        element: <LojaLayout />,
         children: [
           { path: 'loja', element: <VitrinePage /> },
           { path: 'loja/:id', element: <ProdutoDetalhePage /> },
           { path: 'carrinho', element: <CarrinhoPage /> },
-          { path: 'pedidos', element: <PedidosPage /> },
+          {
+            path: 'pedidos',
+            element: (
+              <RequireAuth perfil="comprador">
+                <PedidosPage />
+              </RequireAuth>
+            ),
+          },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

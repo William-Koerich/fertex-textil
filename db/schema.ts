@@ -18,12 +18,12 @@ import {
   uuid,
   boolean,
 } from 'drizzle-orm/pg-core'
-import { authenticatedRole, authUid, authUsers } from 'drizzle-orm/supabase'
+import { anonRole, authenticatedRole, authUid, authUsers } from 'drizzle-orm/supabase'
 
 export const perfilEnum = pgEnum('fertex_perfil', ['vendedor', 'comprador'])
 export const statusPedidoEnum = pgEnum('fertex_status_pedido', ['pendente', 'concluido', 'cancelado'])
-/** loja: compra feita por um comprador no app · manual: venda registrada pelo vendedor (balcão, WhatsApp…) */
-export const origemPedidoEnum = pgEnum('fertex_origem_pedido', ['loja', 'manual'])
+/** loja: compra concluída no app · manual: venda registrada pelo vendedor · whatsapp: pedido enviado pelo comprador e confirmado pelo vendedor */
+export const origemPedidoEnum = pgEnum('fertex_origem_pedido', ['loja', 'manual', 'whatsapp'])
 
 const criadoEm = () => timestamp('criado_em', { withTimezone: true, mode: 'string' }).notNull().defaultNow()
 
@@ -35,14 +35,24 @@ export const profiles = pgTable(
       .references(() => authUsers.id, { onDelete: 'cascade' }),
     nome: text('nome').notNull(),
     perfil: perfilEnum('perfil').notNull(),
+    /** WhatsApp do vendedor (só dígitos, com DDI: 5547999998888) para receber pedidos */
+    whatsapp: text('whatsapp'),
     criado_em: criadoEm(),
   },
-  () => [
+  (t) => [
+    check('fertex_profiles_whatsapp_check', sql`${t.whatsapp} ~ '^[0-9]{10,15}$'`),
     // Cada usuário lê apenas o próprio perfil. A criação é feita pelo trigger fertex_on_auth_user_created.
     pgPolicy('fertex_profiles_select_proprio', {
       for: 'select',
       to: authenticatedRole,
       using: sql`${authUid} = id`,
+    }),
+    // Atualiza só o próprio perfil; as colunas editáveis (nome, whatsapp) são limitadas por GRANT na migration
+    pgPolicy('fertex_profiles_update_proprio', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`${authUid} = id`,
+      withCheck: sql`${authUid} = id`,
     }),
   ],
 ).enableRLS()
@@ -75,6 +85,12 @@ export const produtos = pgTable(
       to: authenticatedRole,
       using: sql`ativo or vendedor_id = ${authUid} or id in (select i.produto_id from fertex_itens_pedido i)`,
     }),
+    // Vitrine pública: visitantes sem login veem apenas produtos ativos
+    pgPolicy('fertex_produtos_select_publico', {
+      for: 'select',
+      to: anonRole,
+      using: sql`ativo`,
+    }),
     pgPolicy('fertex_produtos_insert_vendedor', {
       for: 'insert',
       to: authenticatedRole,
@@ -105,10 +121,15 @@ export const pedidos = pgTable(
     origem: origemPedidoEnum('origem').notNull().default('loja'),
     /** nome do cliente informado pelo vendedor em vendas manuais (opcional) */
     cliente_nome: text('cliente_nome'),
+    /** observação do comprador no pedido pelo WhatsApp */
+    observacao: text('observacao'),
     criado_em: criadoEm(),
+    /** quando a venda foi concluída (pedido pelo WhatsApp: quando o vendedor marcou como vendido) */
+    concluido_em: timestamp('concluido_em', { withTimezone: true, mode: 'string' }),
   },
   (t) => [
-    check('fertex_pedidos_origem_check', sql`(${t.origem} = 'loja' and ${t.comprador_id} is not null) or ${t.origem} = 'manual'`),
+    check('fertex_pedidos_origem_check', sql`${t.comprador_id} is not null or ${t.origem} = 'manual'`),
+    index('fertex_pedidos_status_idx').on(t.status),
     index('fertex_pedidos_comprador_idx').on(t.comprador_id, t.criado_em),
     index('fertex_pedidos_criado_em_idx').on(t.criado_em),
     // Escrita só pelas funções fertex_finalizar_compra e fertex_registrar_venda (security definer)

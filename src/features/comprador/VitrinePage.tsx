@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Plus, Search, Store } from 'lucide-react'
+import { Eye, Plus, Search, Store } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { carregarVendedores } from '@/lib/vendedores'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { listarProdutosAtivos } from '@/lib/produtos'
@@ -30,7 +32,7 @@ function CardSkeleton() {
   )
 }
 
-function ProdutoCard({ produto }: { produto: Produto }) {
+function ProdutoCard({ produto, vendedorNome, previa }: { produto: Produto; vendedorNome?: string; previa: boolean }) {
   const { adicionar, itens } = useCart()
   const toast = useToast()
   const esgotado = produto.estoque <= 0
@@ -52,8 +54,14 @@ function ProdutoCard({ produto }: { produto: Produto }) {
           <span className="text-xs text-slate-500 dark:text-slate-400">{produto.categoria}</span>
           <h2 className="line-clamp-2 text-sm font-medium">{produto.nome}</h2>
           <span className="mt-1 font-bold">{formatarMoeda(produto.preco)}</span>
+          {vendedorNome && <span className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">por {vendedorNome}</span>}
         </div>
       </Link>
+      {previa ? (
+        <span className="absolute right-3 bottom-3 left-3 rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          {esgotado ? 'Esgotado' : `${produto.estoque} em estoque`}
+        </span>
+      ) : (
       <button
         type="button"
         disabled={esgotado || limite}
@@ -73,6 +81,7 @@ function ProdutoCard({ produto }: { produto: Produto }) {
           </>
         )}
       </button>
+      )}
     </li>
   )
 }
@@ -82,6 +91,16 @@ export default function VitrinePage() {
   const [params, setParams] = useSearchParams()
   const busca = params.get('q') ?? ''
   const categoria = params.get('categoria') ?? ''
+  const vendedorId = params.get('vendedor') ?? ''
+  const { profile } = useAuth()
+  const previa = profile?.perfil === 'vendedor'
+  const [vendedores, setVendedores] = useState<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    carregarVendedores()
+      .then(setVendedores)
+      .catch(() => {})
+  }, [])
 
   // Atualiza a URL sem empilhar histórico, para o "voltar" do detalhe manter os filtros
   const atualizar = (k: string, v: string) =>
@@ -94,19 +113,24 @@ export default function VitrinePage() {
       { replace: true },
     )
 
+  // Link de um vendedor (/loja?vendedor=id) mostra só os produtos dele
+  const daLoja = useMemo(() => (data ?? []).filter((p) => !vendedorId || p.vendedor_id === vendedorId), [data, vendedorId])
+  const nomeLoja = vendedorId ? vendedores.get(vendedorId) : undefined
+  const variosVendedores = new Set((data ?? []).map((p) => p.vendedor_id)).size > 1
+
   const categorias = useMemo(
-    () => [...new Set((data ?? []).map((p) => p.categoria))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
-    [data],
+    () => [...new Set(daLoja.map((p) => p.categoria))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [daLoja],
   )
 
   const filtrados = useMemo(() => {
     const q = normalizar(busca.trim())
-    return (data ?? []).filter(
+    return daLoja.filter(
       (p) =>
         (!categoria || p.categoria === categoria) &&
         (!q || normalizar(`${p.nome} ${p.descricao} ${p.categoria}`).includes(q)),
     )
-  }, [data, busca, categoria])
+  }, [daLoja, busca, categoria])
 
   // Disponíveis primeiro, esgotados no fim
   const ordenados = useMemo(() => [...filtrados].sort((a, b) => Number(b.estoque > 0) - Number(a.estoque > 0)), [filtrados])
@@ -115,7 +139,27 @@ export default function VitrinePage() {
 
   return (
     <>
-      <PageHeader title="Loja" subtitle="Encontre os produtos que você precisa." />
+      <PageHeader
+        title={vendedorId ? (nomeLoja ? `Loja de ${nomeLoja}` : 'Loja') : 'Loja'}
+        subtitle={vendedorId ? 'Escolha os produtos e envie seu pedido pelo WhatsApp.' : 'Encontre os produtos que você precisa.'}
+        actions={
+          vendedorId && variosVendedores ? (
+            <button
+              type="button"
+              onClick={() => atualizar('vendedor', '')}
+              className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+            >
+              Ver todos os vendedores
+            </button>
+          ) : undefined
+        }
+      />
+      {previa && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800 dark:border-brand-900 dark:bg-brand-950/50 dark:text-brand-200">
+          <Eye className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          Você está vendo a loja como os clientes veem. Para comprar, use uma conta de comprador.
+        </div>
+      )}
 
       <div className="sticky top-14 z-10 -mx-4 mb-4 space-y-3 bg-slate-50/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 dark:bg-slate-950/95 md:dark:bg-transparent">
         <div className="relative">
@@ -166,8 +210,12 @@ export default function VitrinePage() {
         </ul>
       ) : error ? (
         <ErrorState message={error} onRetry={reload} />
-      ) : !data?.length ? (
-        <EmptyState icon={Store} title="A loja ainda está vazia" description="Nenhum produto foi cadastrado pelos vendedores até agora." />
+      ) : !daLoja.length ? (
+        <EmptyState
+          icon={Store}
+          title="A loja ainda está vazia"
+          description={vendedorId ? 'Este vendedor ainda não tem produtos disponíveis.' : 'Nenhum produto foi cadastrado pelos vendedores até agora.'}
+        />
       ) : !ordenados.length ? (
         <EmptyState
           icon={Search}
@@ -179,7 +227,7 @@ export default function VitrinePage() {
               className="font-semibold text-brand-600 hover:underline dark:text-brand-400"
               onClick={() => {
                 setBuscaLocal('')
-                setParams({}, { replace: true })
+                setParams(vendedorId ? { vendedor: vendedorId } : {}, { replace: true })
               }}
             >
               Limpar filtros
@@ -189,7 +237,12 @@ export default function VitrinePage() {
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {ordenados.map((p) => (
-            <ProdutoCard key={p.id} produto={p} />
+            <ProdutoCard
+              key={p.id}
+              produto={p}
+              previa={previa}
+              vendedorNome={!vendedorId && variosVendedores ? vendedores.get(p.vendedor_id) : undefined}
+            />
           ))}
         </ul>
       )}

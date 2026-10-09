@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { HandCoins, Package, Pencil, Plus, Search, Trash } from 'lucide-react'
+import { HandCoins, Package, Pencil, Plus, Search, Share2, Trash } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
@@ -85,13 +85,21 @@ export default function ProdutosPage() {
       <Plus className="h-4 w-4" aria-hidden /> Novo produto
     </Link>
   )
+  const acoes = (
+    <>
+      <Link to="/perfil" className={buttonClass('secondary')}>
+        <Share2 className="h-4 w-4" aria-hidden /> Link da loja
+      </Link>
+      {novo}
+    </>
+  )
 
   return (
     <>
       <PageHeader
         title="Meus produtos"
         subtitle={data ? `${formatarNumero(data.length)} produto(s) cadastrado(s)` : undefined}
-        actions={novo}
+        actions={acoes}
       />
 
       {loading ? (

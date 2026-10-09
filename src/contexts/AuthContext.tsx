@@ -21,6 +21,8 @@ interface AuthContextValue {
   /** Retorna true se a conta já está logada; false se precisa confirmar o e-mail */
   signUp: (input: SignUpInput) => Promise<boolean>
   signOut: () => Promise<void>
+  /** Atualiza nome e/ou WhatsApp do próprio perfil */
+  atualizarPerfil: (dados: { nome?: string; whatsapp?: string | null }) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -126,11 +128,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut()
   }, [])
 
+  const atualizarPerfil = useCallback(
+    async (dados: { nome?: string; whatsapp?: string | null }) => {
+      if (!userId) return
+      const { data, error } = await supabase.from('fertex_profiles').update(dados).eq('id', userId).select().single()
+      if (error) throw error
+      setProfile(data as Profile)
+      try {
+        localStorage.setItem(`fertex-perfil:${userId}`, JSON.stringify(data))
+      } catch {
+        /* ignora */
+      }
+    },
+    [userId],
+  )
+
   const loading = !sessionLoaded || (!!userId && profileUserId !== userId)
 
   const value = useMemo(
-    () => ({ session, profile, loading, profileError, signIn, signUp, signOut }),
-    [session, profile, loading, profileError, signIn, signUp, signOut],
+    () => ({ session, profile, loading, profileError, signIn, signUp, signOut, atualizarPerfil }),
+    [session, profile, loading, profileError, signIn, signUp, signOut, atualizarPerfil],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

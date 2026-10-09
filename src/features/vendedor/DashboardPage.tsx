@@ -243,6 +243,18 @@ export default function DashboardPage() {
     <>
       <PageHeader title="Painel" subtitle={`Olá, ${primeiroNome}! Veja como estão suas vendas.`} />
 
+      {profile && !profile.whatsapp && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          <span className="flex items-center gap-2">
+            <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />
+            Cadastre seu WhatsApp para receber os pedidos dos clientes.
+          </span>
+          <Link to="/perfil" className="font-semibold underline">
+            Cadastrar agora
+          </Link>
+        </div>
+      )}
+
       {/* Filtro de período: uma linha acima de tudo que ele afeta */}
       <div className="mb-5 flex gap-2" role="group" aria-label="Período">
         {PERIODOS.map((p) => (

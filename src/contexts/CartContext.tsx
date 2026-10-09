@@ -10,6 +10,7 @@ export interface ItemCarrinho {
   preco: number
   foto_url: string | null
   estoque: number
+  vendedor_id?: string
 }
 
 interface CartValue {
@@ -37,14 +38,36 @@ function carregar(chave: string): ItemCarrinho[] {
   }
 }
 
-/** O carrinho é salvo no aparelho, separado por usuário. */
-export function CartProvider({ userId, children }: { userId: string; children: ReactNode }) {
-  const chave = `fertex-carrinho:${userId}`
-  const [itens, setItens] = useState<ItemCarrinho[]>(() => carregar(chave))
+const CHAVE_ANONIMO = 'fertex-carrinho:anon'
+
+/** Junta o carrinho montado sem login ao carrinho do usuário (somando quantidades). */
+function mesclarComAnonimo(chave: string): ItemCarrinho[] {
+  const doUsuario = carregar(chave)
+  if (chave === CHAVE_ANONIMO) return doUsuario
+  const anonimo = carregar(CHAVE_ANONIMO)
+  if (!anonimo.length) return doUsuario
+  const porId = new Map(doUsuario.map((i) => [i.produto_id, { ...i }]))
+  for (const a of anonimo) {
+    const atual = porId.get(a.produto_id)
+    if (atual) atual.quantidade = Math.min(Math.max(atual.estoque, a.estoque), atual.quantidade + a.quantidade)
+    else porId.set(a.produto_id, a)
+  }
+  // O carrinho anônimo é apagado num efeito (o inicializador pode rodar 2x no StrictMode)
+  return [...porId.values()]
+}
+
+/**
+ * O carrinho é salvo no aparelho, separado por usuário (userId null = visitante sem login).
+ * Ao entrar na conta, o que foi adicionado sem login é levado para o carrinho do usuário.
+ */
+export function CartProvider({ userId, children }: { userId: string | null; children: ReactNode }) {
+  const chave = userId ? `fertex-carrinho:${userId}` : CHAVE_ANONIMO
+  const [itens, setItens] = useState<ItemCarrinho[]>(() => mesclarComAnonimo(chave))
 
   useEffect(() => {
     try {
       localStorage.setItem(chave, JSON.stringify(itens))
+      if (chave !== CHAVE_ANONIMO) localStorage.removeItem(CHAVE_ANONIMO)
     } catch {
       /* armazenamento indisponível: carrinho fica só em memória */
     }
@@ -70,6 +93,7 @@ export function CartProvider({ userId, children }: { userId: string; children: R
         preco: p.preco,
         foto_url: p.foto_url,
         estoque: p.estoque,
+        vendedor_id: p.vendedor_id,
       }
       return atual ? lista.map((i) => (i.produto_id === p.id ? item : i)) : [...lista, item]
     })
@@ -93,7 +117,7 @@ export function CartProvider({ userId, children }: { userId: string; children: R
       lista.flatMap((i) => {
         const p = porId.get(i.produto_id)
         if (!p) return [{ ...i, estoque: 0 }]
-        return [{ ...i, nome: p.nome, preco: p.preco, foto_url: p.foto_url, estoque: p.ativo ? p.estoque : 0 }]
+        return [{ ...i, nome: p.nome, preco: p.preco, foto_url: p.foto_url, estoque: p.ativo ? p.estoque : 0, vendedor_id: p.vendedor_id }]
       }),
     )
   }, [])

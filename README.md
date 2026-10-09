@@ -8,8 +8,9 @@ PWA de vendas (acelerador de vendas básico), mobile-first e em português. Vend
 
 | Perfil | Telas |
 |---|---|
-| **Vendedor** | **Painel**: faturamento total, do mês, vendas, ticket médio, estoque baixo, gráfico diário e top 5, com filtro de 7/30/90 dias · **Produtos**: lista com busca, criar/editar com foto, ativar/desativar, excluir e **registrar venda** · **Vendas**: tabela por item vendido, com filtro por período e produto e total no rodapé; também permite registrar vendas diretas |
-| **Comprador** | **Loja**: grade com busca, filtro por categoria e selo "Esgotado" · **Detalhe do produto** · **Carrinho**: alterar quantidade, remover, finalizar · **Meus pedidos** |
+| **Vendedor** | **Pedidos recebidos**: pedidos do WhatsApp aguardando, com **Marcar como vendido** (baixa o estoque) ou **Cancelar** · **Perfil**: nome, WhatsApp e link da loja (copiar/compartilhar) · **Painel**: faturamento total, do mês, vendas, ticket médio, estoque baixo, gráfico diário e top 5, com filtro de 7/30/90 dias · **Produtos**: lista com busca, criar/editar com foto, ativar/desativar, excluir e **registrar venda** · **Vendas**: tabela por item vendido, com filtro por período e produto e total no rodapé; também permite registrar vendas diretas |
+| **Visitante (sem login)** | **Loja** e **detalhe do produto** públicos, incluindo o link de um vendedor (`/loja?vendedor=<id>`), e **carrinho**. O login só é pedido na hora de enviar o pedido, e o carrinho é mantido depois do login |
+| **Comprador** | Tudo o que o visitante faz, mais **enviar o pedido pelo WhatsApp** (com observação) e **Meus pedidos**: situação de cada pedido, botão para falar no WhatsApp e cancelar o pedido |
 
 Além disso: sessão persistente, rotas protegidas por perfil, tema claro/escuro/sistema, app instalável, funcionamento offline do app shell, aviso de nova versão e estados de carregamento, vazio e erro em todas as telas.
 
@@ -27,6 +28,8 @@ supabase/migrations/         Migrations SQL (geradas pelo Drizzle + customizadas
   0005_dashboard_vendedor.sql RPC do painel
   0006_venda_manual.sql      Origem do pedido (loja/manual) e nome do cliente
   0007_registrar_venda.sql   RPC de venda registrada pelo vendedor
+  0008_pedido_whatsapp.sql   WhatsApp no perfil, observação/conclusão no pedido, vitrine pública
+  0009_funcoes_whatsapp.sql  RPCs do pedido pelo WhatsApp (enviar, concluir, cancelar, listar)
 scripts/seed.ts              Dados de exemplo
 src/
   contexts/                  Auth, carrinho, tema, toasts
@@ -133,13 +136,14 @@ Row Level Security está ativo em todas as tabelas `fertex_*`. A chave publicáv
 
 | Tabela | Regra |
 |---|---|
-| `fertex_profiles` | cada usuário lê só o próprio perfil; a criação é feita pelo trigger de cadastro |
-| `fertex_produtos` | qualquer usuário logado lê os produtos **ativos**; só vendedores criam, e cada um só edita/exclui os próprios (e vê os próprios inativos) |
+| `fertex_profiles` | cada usuário lê só o próprio perfil e só pode alterar nele **nome e WhatsApp**; a criação é feita pelo trigger de cadastro. Visitantes veem apenas o nome dos vendedores que têm produtos ativos (`fertex_vendedores_publicos`) |
+| `fertex_produtos` | qualquer pessoa, **mesmo sem login**, lê os produtos **ativos**; só vendedores criam, e cada um só edita/exclui os próprios (e vê os próprios inativos) |
 | `fertex_pedidos` | o comprador vê apenas os próprios pedidos; ninguém insere direto |
 | `fertex_itens_pedido` | o vendedor vê só os itens dos próprios produtos; o comprador vê os itens dos próprios pedidos |
 | Storage `fertex-produtos` | leitura pública das fotos; cada vendedor só grava/apaga na pasta `{seu id}/`; até 5 MB, só JPG/PNG/WebP |
 
-- **Checkout** (`fertex_finalizar_compra`): uma transação trava as linhas dos produtos (`FOR UPDATE`), valida disponibilidade e estoque, grava o pedido e os itens com o **preço do banco** e baixa o estoque. Duas compras simultâneas da última unidade resultam em uma venda e um erro de "estoque insuficiente". O estoque nunca fica negativo.
+- **Checkout direto** (`fertex_finalizar_compra`, mantido no banco mas não usado pela tela, que agora envia pelo WhatsApp): uma transação trava as linhas dos produtos (`FOR UPDATE`), valida disponibilidade e estoque, grava o pedido e os itens com o **preço do banco** e baixa o estoque. Duas compras simultâneas da última unidade resultam em uma venda e um erro de "estoque insuficiente". O estoque nunca fica negativo.
+- **Pedido pelo WhatsApp** (`fertex_enviar_pedido_whatsapp`): o comprador logado envia o carrinho. A função valida disponibilidade e estoque, exige que o vendedor tenha WhatsApp cadastrado e cria **um pedido por vendedor** com status `pendente`, **sem baixar o estoque**. O app abre o WhatsApp do vendedor (`wa.me`) com a mensagem pronta: itens, total, nome e observação. Depois de combinar, o vendedor clica em **Marcar como vendido** (`fertex_concluir_pedido`), que trava os produtos, confere o estoque, baixa o estoque e conclui a venda (ela entra no painel e em "Produtos vendidos" na data da conclusão). Também pode clicar em **Cancelar** (`fertex_cancelar_pedido`, permitido também ao comprador enquanto o pedido estiver pendente).
 - **Venda direta** (`fertex_registrar_venda`): o vendedor registra uma venda feita fora do app (balcão, WhatsApp…), com quantidade, preço unitário (preenchido com o preço atual) e nome do cliente opcional. A função trava o produto, confere que ele é do próprio vendedor e que há estoque, cria o pedido com origem `manual` e baixa o estoque. A venda aparece em "Produtos vendidos" com o selo "Venda direta" e entra no painel.
 - **Vendas e painel** (`fertex_vendas_vendedor`, `fertex_dashboard_vendedor`): funções `security definer` sempre filtradas por `auth.uid()`. Elas expõem ao vendedor só o nome do comprador e a data dos pedidos dos próprios produtos.
 - Um produto que já tem vendas não pode ser excluído (o histórico fica preservado). Para tirá-lo da vitrine, desative-o.
