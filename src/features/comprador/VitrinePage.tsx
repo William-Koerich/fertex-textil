@@ -5,7 +5,10 @@ import { CompartilharDialog } from '@/components/CompartilharDialog'
 import { Button } from '@/components/ui/Button'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { carregarVendedores } from '@/lib/vendedores'
+import { carregarVendedores, useVendedoresPublicos } from '@/lib/vendedores'
+import { useDefinirContato } from '@/contexts/ContatoContext'
+import { resolverVendedor } from '@/components/WhatsappFlutuante'
+import { formatarWhatsapp } from '@/lib/whatsapp'
 import { registrarVisita } from '@/lib/visitas'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
@@ -130,6 +133,10 @@ export default function VitrinePage() {
       .catch(() => {})
   }, [])
 
+  const vendedoresInfo = useVendedoresPublicos()
+  const contatoLoja = resolverVendedor(vendedoresInfo, vendedorId || null)
+  useDefinirContato(vendedorId || null)
+
   // Estatísticas de visitas (o servidor ignora visitas de vendedores)
   useEffect(() => {
     registrarVisita({ vendedorId: vendedorId || null })
@@ -194,6 +201,14 @@ export default function VitrinePage() {
           ) : undefined
         }
       />
+      {contatoLoja?.whatsapp && (
+        <p className="-mt-3 mb-4 text-sm text-slate-600 dark:text-slate-300">
+          Dúvidas? Fale com {contatoLoja.nome.split(' ')[0]} no{' '}
+          <a href={`https://wa.me/${contatoLoja.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-medium text-[#1f8a4c] hover:underline dark:text-emerald-400">
+            WhatsApp {formatarWhatsapp(contatoLoja.whatsapp).replace('+55 ', '')}
+          </a>
+        </p>
+      )}
       {previa && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800 dark:border-brand-900 dark:bg-brand-950/50 dark:text-brand-200">
           <Eye className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />

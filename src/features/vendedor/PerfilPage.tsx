@@ -76,7 +76,7 @@ export default function PerfilPage() {
             value={whatsapp}
             onChange={(e) => setWhatsapp(e.target.value)}
             error={erros.whatsapp}
-            hint="Com DDD. Números de fora do Brasil: comece com o código do país."
+            hint="Com DDD. Fica público: aparece na sua loja, no botão do WhatsApp e nas imagens de compartilhamento."
           />
           <div className="flex justify-end">
             <Button type="submit" loading={salvando}>

@@ -169,6 +169,13 @@
       "when": 1791898785905,
       "tag": "0023_funcoes_gps",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791911083017,
+      "tag": "0024_whatsapp_publico",
+      "breakpoints": true
     }
   ]
 }

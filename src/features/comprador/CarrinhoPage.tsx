@@ -10,6 +10,7 @@ import { enviarPedidoWhatsapp } from '@/lib/pedidos'
 import type { PedidoEnviado } from '@/lib/pedidos'
 import type { Produto } from '@/lib/produtos'
 import { carregarVendedores } from '@/lib/vendedores'
+import { useDefinirContato } from '@/contexts/ContatoContext'
 import { codigoPedido, linkWhatsapp, mensagemPedido } from '@/lib/whatsapp'
 import { formatarMoeda, formatarNumero } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -100,6 +101,9 @@ export default function CarrinhoPage() {
   }, [])
 
   // Agrupa por vendedor: cada vendedor recebe o próprio pedido no WhatsApp
+  const vendedoresDoCarrinho = [...new Set(itens.map((i) => i.vendedor_id).filter(Boolean))]
+  useDefinirContato(vendedoresDoCarrinho.length === 1 ? vendedoresDoCarrinho[0] : null)
+
   const grupos = useMemo(() => {
     const m = new Map<string, ItemCarrinho[]>()
     for (const i of itens) {

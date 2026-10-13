@@ -2,7 +2,7 @@
  * Prévia dos links (Open Graph) para robôs de redes sociais.
  * Usado por api/preview.ts, que só recebe robôs (regras "has user-agent" no vercel.json).
  */
-import { buscarProduto, contarProdutos, nomeDoVendedor, precoPor, textoCores, textoMinimo } from './dados'
+import { buscarProduto, contarProdutos, formatarTelefone, precoPor, textoCores, textoMinimo, vendedorPublico } from './dados'
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -52,8 +52,14 @@ export async function montarMeta(url: URL, userAgent: string): Promise<Meta> {
   if (produtoId) {
     const p = await buscarProduto(produtoId)
     if (p) {
-      const vendedor = await nomeDoVendedor(p.vendedor_id)
-      const partes = [textoMinimo(p), textoCores(p.cores) && `Cores: ${textoCores(p.cores)}`, vendedor && `Vendido por ${vendedor}`]
+      const vendedor = await vendedorPublico(p.vendedor_id)
+      const tel = formatarTelefone(vendedor?.whatsapp)
+      const partes = [
+        textoMinimo(p),
+        textoCores(p.cores) && `Cores: ${textoCores(p.cores)}`,
+        vendedor && `Vendido por ${vendedor.nome}`,
+        tel && `WhatsApp ${tel}`,
+      ]
       return {
         titulo: `${p.nome} · ${precoPor(p)}`,
         descricao: [...partes.filter(Boolean), 'Faça seu pedido pelo WhatsApp.'].join(' · '),
@@ -66,11 +72,13 @@ export async function montarMeta(url: URL, userAgent: string): Promise<Meta> {
   }
 
   const vendedorId = url.searchParams.get('vendedor')
-  const [nome, total] = await Promise.all([nomeDoVendedor(vendedorId), contarProdutos(vendedorId)])
+  const [vendedor, total] = await Promise.all([vendedorPublico(vendedorId), contarProdutos(vendedorId)])
+  const nome = vendedorId ? vendedor?.nome : null
+  const tel = formatarTelefone(vendedor?.whatsapp)
   const titulo = nome ? `Loja de ${nome} · Fertex Vendas` : 'Fertex Vendas · Catálogo e pedidos pelo WhatsApp'
   return {
     titulo,
-    descricao: `${total} ${total === 1 ? 'produto disponível' : 'produtos disponíveis'}. Veja o catálogo e faça seu pedido pelo WhatsApp.`,
+    descricao: `${total} ${total === 1 ? 'produto disponível' : 'produtos disponíveis'}. Veja o catálogo e faça seu pedido pelo WhatsApp${tel ? ` ${tel}` : ''}.`,
     imagem: og(nome && vendedorId ? `?vendedor=${vendedorId}` : ''),
     ...dimensoes,
     tipo: 'website',

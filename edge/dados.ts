@@ -61,8 +61,17 @@ export async function contarProdutos(vendedorId: string | null): Promise<number>
   return total ? Number(total) : 0
 }
 
-export async function nomeDoVendedor(id: string | null | undefined): Promise<string | null> {
-  if (!ehUuid(id)) return null
+export interface VendedorPublico {
+  id: string
+  nome: string
+  whatsapp: string | null
+}
+
+/**
+ * Nome e WhatsApp (público) do vendedor. Sem id (loja geral): se só existe um vendedor com produtos,
+ * devolve ele — assim o catálogo geral também mostra o contato.
+ */
+export async function vendedorPublico(id: string | null | undefined): Promise<VendedorPublico | null> {
   const { url, headers } = config()
   const r = await fetch(`${url}/rest/v1/rpc/fertex_vendedores_publicos`, {
     method: 'POST',
@@ -70,8 +79,20 @@ export async function nomeDoVendedor(id: string | null | undefined): Promise<str
     body: '{}',
   })
   if (!r.ok) return null
-  const lista = (await r.json()) as { id: string; nome: string }[]
-  return lista.find((v) => v.id === id)?.nome ?? null
+  const lista = (await r.json()) as VendedorPublico[]
+  if (ehUuid(id)) return lista.find((v) => v.id === id) ?? null
+  return lista.length === 1 ? lista[0] : null
+}
+
+export async function nomeDoVendedor(id: string | null | undefined): Promise<string | null> {
+  return ehUuid(id) ? ((await vendedorPublico(id))?.nome ?? null) : null
+}
+
+/** "5547996637188" → "(47) 99663-7188" (números de fora do Brasil: +DDI…) */
+export function formatarTelefone(d: string | null | undefined): string | null {
+  if (!d) return null
+  const m = d.match(/^55(\d{2})(\d{4,5})(\d{4})$/)
+  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : `+${d}`
 }
 
 // ---------- formatação (sem depender do código do app) ----------

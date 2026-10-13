@@ -4,7 +4,10 @@ import { ArrowLeft, Share2, ShoppingCart } from 'lucide-react'
 import { CompartilharDialog } from '@/components/CompartilharDialog'
 import { chaveItem, useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { carregarVendedores } from '@/lib/vendedores'
+import { carregarVendedores, useVendedoresPublicos } from '@/lib/vendedores'
+import { useDefinirContato } from '@/contexts/ContatoContext'
+import { resolverVendedor } from '@/components/WhatsappFlutuante'
+import { formatarWhatsapp } from '@/lib/whatsapp'
 import { registrarVisita } from '@/lib/visitas'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
@@ -21,6 +24,12 @@ export default function ProdutoDetalhePage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { data: produto, loading, error, reload } = useAsync(() => buscarProduto(id!), [id])
+  const vendedoresInfo = useVendedoresPublicos()
+  const vendedorInfo = produto ? resolverVendedor(vendedoresInfo, produto.vendedor_id) : null
+  useDefinirContato(
+    produto?.vendedor_id,
+    produto?.ativo ? { id: produto.id, nome: produto.nome, preco: formatarPrecoPor(produto.preco, produto.unidade) } : null,
+  )
   const { adicionar, totalDoProduto, itens } = useCart()
   const [cor, setCor] = useState<string | null>(null)
   const [erroCor, setErroCor] = useState(false)
@@ -97,6 +106,14 @@ export default function ProdutoDetalhePage() {
               <Link to={`/loja?vendedor=${produto.vendedor_id}`} className="font-medium text-brand-600 hover:underline dark:text-brand-400">
                 {vendedores.get(produto.vendedor_id)}
               </Link>
+              {vendedorInfo?.whatsapp && (
+                <>
+                  {' · '}
+                  <a href={`https://wa.me/${vendedorInfo.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-medium text-[#1f8a4c] hover:underline dark:text-emerald-400">
+                    WhatsApp {formatarWhatsapp(vendedorInfo.whatsapp).replace('+55 ', '')}
+                  </a>
+                </>
+              )}
             </p>
           )}
           <p className="mt-3 text-3xl font-bold text-brand-700 dark:text-brand-300">

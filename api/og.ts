@@ -11,13 +11,14 @@ import { ImageResponse } from '@vercel/og'
 import {
   buscarProduto,
   contarProdutos,
-  nomeDoVendedor,
+  formatarTelefone,
+  vendedorPublico,
   precoPor,
   produtosDoVendedor,
   textoCores,
   textoMinimo,
 } from '../edge/dados'
-import type { ProdutoPublico } from '../edge/dados'
+import type { ProdutoPublico, VendedorPublico } from '../edge/dados'
 
 export const config = { runtime: 'edge' }
 
@@ -73,35 +74,46 @@ const chip = (texto: string, tam: number) =>
 const botaoWhatsapp = (tam: number, texto = 'Faça seu pedido pelo WhatsApp') =>
   box({ background: COR.whatsapp, color: 'white', borderRadius: tam * 0.6, padding: `${tam * 0.55}px ${tam * 1.1}px`, fontSize: tam, fontWeight: 700 }, texto)
 
+/** Destaque verde com a chamada e o número do WhatsApp do vendedor (ou só a chamada, se não houver número) */
+const contatoWhatsapp = (tam: number, chamada: string, whatsapp: string | null | undefined, prefixo = true) => {
+  const tel = formatarTelefone(whatsapp)
+  if (!tel) return botaoWhatsapp(tam, chamada)
+  return box(
+    { flexDirection: 'column', background: COR.whatsapp, color: 'white', borderRadius: tam * 0.6, padding: `${tam * 0.5}px ${tam * 1.1}px` },
+    box({ fontSize: tam * 0.75, opacity: 0.9 }, chamada),
+    box({ fontSize: tam * 1.35, fontWeight: 700, letterSpacing: 0.5 }, prefixo ? `WhatsApp ${tel}` : tel),
+  )
+}
+
 const semFoto = (tam: number) =>
   box({ width: '100%', height: '100%', background: '#e0e7ff', alignItems: 'center', justifyContent: 'center', color: COR.marca, fontSize: tam, fontWeight: 700 }, 'F')
 
-function cardProduto(p: ProdutoPublico, foto: string | null, vendedor: string | null) {
+function cardProduto(p: ProdutoPublico, foto: string | null, vendedor: VendedorPublico | null) {
   const minimo = textoMinimo(p)
   const cores = textoCores(p.cores)
   return box(
     { width: 1200, height: 630, background: 'white', fontFamily: 'Inter' },
     box({ width: 560, height: 630, flexShrink: 0 }, foto ? img(foto, { width: 560, height: 630, objectFit: 'cover' }) : semFoto(200)),
     box(
-      { flexDirection: 'column', justifyContent: 'space-between', padding: '48px 52px', flex: 1 },
-      logo(44),
+      { flexDirection: 'column', justifyContent: 'space-between', padding: '40px 52px', flex: 1, gap: 16 },
+      logo(40),
       box(
         { flexDirection: 'column', gap: 14 },
         box({ fontSize: 22, color: COR.suave, textTransform: 'uppercase', letterSpacing: 2 }, cortar(p.categoria, 30)),
-        box({ fontSize: 48, fontWeight: 700, color: COR.texto, lineHeight: 1.15 }, cortar(p.nome, 60)),
-        box({ fontSize: 60, fontWeight: 700, color: COR.marca, marginTop: 6 }, precoPor(p)),
-        box({ flexWrap: 'wrap', gap: 10, marginTop: 6 }, ...(minimo ? [chip(minimo, 22)] : []), ...(cores ? [chip(`Cores: ${cores}`, 22)] : [])),
+        box({ fontSize: 42, fontWeight: 700, color: COR.texto, lineHeight: 1.15 }, cortar(p.nome, 60)),
+        box({ fontSize: 52, fontWeight: 700, color: COR.marca }, precoPor(p)),
+        box({ flexWrap: 'wrap', gap: 8 }, ...(minimo ? [chip(minimo, 20)] : []), ...(cores ? [chip(`Cores: ${textoCores(p.cores, 3)}`, 20)] : [])),
       ),
       box(
         { flexDirection: 'column', gap: 14 },
-        botaoWhatsapp(26),
-        ...(vendedor ? [box({ fontSize: 22, color: COR.suave }, `Loja de ${vendedor}`)] : []),
+        contatoWhatsapp(24, 'Faça seu pedido pelo WhatsApp', vendedor?.whatsapp, false),
+        ...(vendedor ? [box({ fontSize: 22, color: COR.suave }, `Loja de ${vendedor.nome}`)] : []),
       ),
     ),
   )
 }
 
-function cardLoja(titulo: string, total: number, fotos: string[]) {
+function cardLoja(titulo: string, total: number, fotos: string[], whatsapp: string | null) {
   const grade = fotos.slice(0, 4)
   return box(
     { width: 1200, height: 630, background: COR.fundo, fontFamily: 'Inter' },
@@ -113,7 +125,7 @@ function cardLoja(titulo: string, total: number, fotos: string[]) {
         box({ fontSize: 64, fontWeight: 700, color: COR.texto, lineHeight: 1.1 }, cortar(titulo, 40)),
         box({ fontSize: 30, color: COR.suave }, `${total} ${total === 1 ? 'produto disponível' : 'produtos disponíveis'}`),
       ),
-      botaoWhatsapp(28, 'Veja os produtos e peça pelo WhatsApp'),
+      contatoWhatsapp(28, 'Veja os produtos e peça pelo WhatsApp', whatsapp, false),
     ),
     box(
       { flexWrap: 'wrap', width: 580, height: 630, gap: 8, padding: 8, background: '#e0e7ff' },
@@ -124,7 +136,7 @@ function cardLoja(titulo: string, total: number, fotos: string[]) {
   )
 }
 
-function storyProduto(p: ProdutoPublico, foto: string | null, vendedor: string | null) {
+function storyProduto(p: ProdutoPublico, foto: string | null, vendedor: VendedorPublico | null) {
   const minimo = textoMinimo(p)
   const cores = textoCores(p.cores, 6)
   return box(
@@ -142,14 +154,14 @@ function storyProduto(p: ProdutoPublico, foto: string | null, vendedor: string |
       ),
       box(
         { flexDirection: 'column', gap: 28, alignItems: 'flex-start' },
-        botaoWhatsapp(40, 'Toque no link e faça seu pedido'),
-        box({ alignItems: 'center', gap: 24 }, logo(64), ...(vendedor ? [box({ fontSize: 34, color: COR.suave }, `· ${vendedor}`)] : [])),
+        contatoWhatsapp(40, 'Toque no link ou chame no WhatsApp', vendedor?.whatsapp),
+        box({ alignItems: 'center', gap: 24 }, logo(64), ...(vendedor ? [box({ fontSize: 34, color: COR.suave }, `· ${vendedor.nome}`)] : [])),
       ),
     ),
   )
 }
 
-function storyLoja(titulo: string, total: number, fotos: string[]) {
+function storyLoja(titulo: string, total: number, fotos: string[], whatsapp: string | null) {
   const grade = fotos.slice(0, 4)
   return box(
     { width: 1080, height: 1920, flexDirection: 'column', background: 'white', fontFamily: 'Inter' },
@@ -166,7 +178,7 @@ function storyLoja(titulo: string, total: number, fotos: string[]) {
         box({ fontSize: 88, fontWeight: 700, color: COR.texto, lineHeight: 1.1 }, cortar(titulo, 40)),
         box({ fontSize: 44, color: COR.suave }, `${total} ${total === 1 ? 'produto disponível' : 'produtos disponíveis'}`),
       ),
-      box({ flexDirection: 'column', gap: 32, alignItems: 'flex-start' }, botaoWhatsapp(40, 'Toque no link e faça seu pedido'), logo(64)),
+      box({ flexDirection: 'column', gap: 32, alignItems: 'flex-start' }, contatoWhatsapp(40, 'Toque no link ou chame no WhatsApp', whatsapp), logo(64)),
     ),
   )
 }
@@ -187,13 +199,14 @@ export default async function handler(req: Request) {
   let elemento
   const produto = produtoId ? await buscarProduto(produtoId) : null
   if (produto) {
-    const [foto, vendedor] = await Promise.all([fotoDataUri(produto.foto_url), nomeDoVendedor(produto.vendedor_id)])
+    const [foto, vendedor] = await Promise.all([fotoDataUri(produto.foto_url), vendedorPublico(produto.vendedor_id)])
     elemento = story ? storyProduto(produto, foto, vendedor) : cardProduto(produto, foto, vendedor)
   } else {
-    const [nome, lista, total] = await Promise.all([nomeDoVendedor(vendedorId), produtosDoVendedor(vendedorId, 8), contarProdutos(vendedorId)])
+    const [vendedor, lista, total] = await Promise.all([vendedorPublico(vendedorId), produtosDoVendedor(vendedorId, 8), contarProdutos(vendedorId)])
+    const nome = vendedorId ? vendedor?.nome : null
     const fotos = (await Promise.all(lista.map((p) => fotoDataUri(p.foto_url)))).filter((f): f is string => !!f)
     const titulo = nome ? `Loja de ${nome}` : 'Catálogo Fertex'
-    elemento = story ? storyLoja(titulo, total, fotos) : cardLoja(titulo, total, fotos)
+    elemento = story ? storyLoja(titulo, total, fotos, vendedor?.whatsapp ?? null) : cardLoja(titulo, total, fotos, vendedor?.whatsapp ?? null)
   }
 
   if (leve) {
