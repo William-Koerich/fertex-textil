@@ -5,6 +5,7 @@
  * precisam estar no HTML. Quando um robô acessa /loja ou /loja/<produto>, injetamos as meta tags
  * do produto/loja no index.html. Visitantes humanos recebem o site normal (sem atraso extra).
  */
+import { next } from '@vercel/functions'
 import { buscarProduto, contarProdutos, nomeDoVendedor, precoPor, produtosDoVendedor, textoCores, textoMinimo } from './edge/dados'
 
 export const config = { matcher: ['/', '/loja', '/loja/:path*'] }
@@ -84,19 +85,25 @@ export async function montarMeta(url: URL, userAgent: string): Promise<Meta> {
   }
 }
 
-export default async function middleware(request: Request): Promise<Response | undefined> {
-  const ua = request.headers.get('user-agent') ?? ''
-  if (request.method !== 'GET' || !ROBOS.test(ua)) return undefined // segue o fluxo normal
-
+/**
+ * Importante: em projetos que não são Next.js, para seguir com a requisição normal é obrigatório
+ * `return next()`. Retornar `undefined` faz a Vercel responder 500 (MIDDLEWARE_INVOCATION_FAILED)
+ * para todos os visitantes. Qualquer falha aqui também segue o fluxo normal: o site nunca cai por causa da prévia.
+ */
+export default async function middleware(request: Request): Promise<Response> {
   try {
+    const ua = request.headers.get('user-agent') ?? ''
+    if (request.method !== 'GET' || !ROBOS.test(ua)) return next() // visitante humano: site normal
+
     const url = new URL(request.url)
     const [resposta, meta] = await Promise.all([fetch(new URL('/index.html', url)), montarMeta(url, ua)])
-    if (!resposta.ok) return undefined
+    if (!resposta.ok) return next()
     const html = (await resposta.text()).replace(/<!-- og:inicio[\s\S]*?<!-- og:fim -->/, tags(meta, url.toString()))
     return new Response(html, {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=0, s-maxage=600' },
     })
-  } catch {
-    return undefined
+  } catch (e) {
+    console.error('[middleware] prévia de link falhou:', e)
+    return next()
   }
 }
