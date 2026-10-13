@@ -41,7 +41,8 @@ supabase/migrations/         Migrations SQL (geradas pelo Drizzle + customizadas
   0018_visitas.sql           Tabelas de visitas e cache de localização por IP
   0019_funcoes_visitas.sql   pg_net, registro de visitas e estatísticas
 api/og.ts                    Imagem do card de compartilhamento (Vercel Edge Function)
-middleware.ts                Prévia dos links (Open Graph) para robôs do Facebook/WhatsApp (Vercel)
+api/preview.ts               HTML com a prévia dos links (Open Graph) para robôs do Facebook/WhatsApp
+edge/preview.ts              Monta título, descrição e imagem da prévia
 edge/dados.ts                Dados públicos usados pela imagem e pela prévia
 scripts/seed.ts              Dados de exemplo
 src/
@@ -146,7 +147,7 @@ O PWA só é instalável em HTTPS (ou `localhost`). Vercel e Netlify já servem 
 ## Compartilhamento e prévia dos links
 
 - **Botão "Compartilhar"** (Perfil, lista de produtos, página do produto e loja do vendedor): WhatsApp, Facebook, **imagem vertical para os Stories do Instagram** (o link é copiado junto, para o adesivo de link), link para a bio, copiar link e o menu de compartilhamento do celular. Cada link leva `?origem=whatsapp|facebook|instagram`, o que alimenta a tela de Visitas.
-- **Prévia bonita (Open Graph):** os robôs do Facebook, WhatsApp, Telegram etc. não executam JavaScript. Na Vercel, o `middleware.ts` identifica esses robôs e coloca no HTML o título, a descrição (preço, pedido mínimo, cores, vendedor) e a imagem do card gerada por `/api/og`. Para o WhatsApp, que costuma ignorar imagens pesadas, a imagem usada é a própria foto do produto. Visitantes humanos recebem o site normal, sem atraso extra.
+- **Prévia bonita (Open Graph):** os robôs do Facebook, WhatsApp, Telegram etc. não executam JavaScript. Na Vercel, regras do `vercel.json` (condição `has` no user-agent) mandam só esses robôs para `/api/preview`, que coloca no HTML o título, a descrição (preço, pedido mínimo, cores, vendedor) e a imagem do card gerada por `/api/og`. Para o WhatsApp, que costuma ignorar imagens pesadas, a imagem usada é a própria foto do produto. Visitantes humanos recebem o site normal, sem passar por nenhum código.
 - **Só funciona com o app publicado na Vercel**, porque as redes precisam acessar o link pela internet. Em `npm run dev`, o `/api/og` também funciona (plugin no `vite.config.ts`) para você ver o card. Depois de publicar, teste em [developers.facebook.com/tools/debug](https://developers.facebook.com/tools/debug/) (o botão "Scrape Again" atualiza a prévia em cache).
 
 ## Visitas
