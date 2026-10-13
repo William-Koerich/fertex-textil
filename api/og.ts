@@ -136,49 +136,55 @@ function cardLoja(titulo: string, total: number, fotos: string[], whatsapp: stri
   )
 }
 
+/**
+ * Imagens verticais (Status do WhatsApp / Stories do Instagram): o último quarto da altura fica em branco,
+ * porque o WhatsApp e o Instagram desenham a legenda e o campo "Responder" por cima dessa parte.
+ * Todo o conteúdo (inclusive o número do WhatsApp) termina antes de ~72% da altura.
+ */
+const FAIXA_LIVRE = 540
+
 function storyProduto(p: ProdutoPublico, foto: string | null, vendedor: VendedorPublico | null) {
   const minimo = textoMinimo(p)
-  const cores = textoCores(p.cores, 6)
+  const cores = textoCores(p.cores, 4)
   return box(
     { width: 1080, height: 1920, flexDirection: 'column', background: 'white', fontFamily: 'Inter' },
-    box({ width: 1080, height: 960, flexShrink: 0 }, foto ? img(foto, { width: 1080, height: 960, objectFit: 'cover' }) : semFoto(360)),
-    // margem inferior maior: o Instagram desenha os próprios botões na parte de baixo dos Stories
+    box({ width: 1080, height: 720, flexShrink: 0 }, foto ? img(foto, { width: 1080, height: 720, objectFit: 'cover' }) : semFoto(320)),
     box(
-      { flexDirection: 'column', justifyContent: 'space-between', padding: '60px 72px 170px', flex: 1, gap: 40 },
-      box(
-        { flexDirection: 'column', gap: 22 },
-        box({ fontSize: 34, color: COR.suave, textTransform: 'uppercase', letterSpacing: 3 }, cortar(p.categoria, 30)),
-        box({ fontSize: 76, fontWeight: 700, color: COR.texto, lineHeight: 1.1 }, cortar(p.nome, 50)),
-        box({ fontSize: 96, fontWeight: 700, color: COR.marca }, precoPor(p)),
-        box({ flexWrap: 'wrap', gap: 14 }, ...(minimo ? [chip(minimo, 34)] : []), ...(cores ? [chip(`Cores: ${cores}`, 34)] : [])),
-      ),
-      box(
-        { flexDirection: 'column', gap: 28, alignItems: 'flex-start' },
-        contatoWhatsapp(40, 'Toque no link ou chame no WhatsApp', vendedor?.whatsapp),
-        box({ alignItems: 'center', gap: 24 }, logo(64), ...(vendedor ? [box({ fontSize: 34, color: COR.suave }, `· ${vendedor.nome}`)] : [])),
-      ),
+      { flexDirection: 'column', justifyContent: 'flex-start', padding: `44px 72px ${FAIXA_LIVRE}px`, flex: 1, gap: 18 },
+      box({ fontSize: 30, color: COR.suave, textTransform: 'uppercase', letterSpacing: 3 }, cortar(p.categoria, 30)),
+      box({ fontSize: 64, fontWeight: 700, color: COR.texto, lineHeight: 1.1 }, cortar(p.nome, 46)),
+      box({ fontSize: 84, fontWeight: 700, color: COR.marca }, precoPor(p)),
+      box({ flexWrap: 'wrap', gap: 12 }, ...(minimo ? [chip(minimo, 30)] : []), ...(cores ? [chip(`Cores: ${cores}`, 30)] : [])),
+      box({ marginTop: 14 }, contatoWhatsapp(38, 'Toque no link ou chame no WhatsApp', vendedor?.whatsapp)),
+      box({ alignItems: 'center', gap: 20, marginTop: 6 }, logo(52), ...(vendedor ? [box({ fontSize: 30, color: COR.suave }, `· ${vendedor.nome}`)] : [])),
     ),
   )
 }
 
 function storyLoja(titulo: string, total: number, fotos: string[], whatsapp: string | null) {
   const grade = fotos.slice(0, 4)
+  const alturaGrade = 880
   return box(
     { width: 1080, height: 1920, flexDirection: 'column', background: 'white', fontFamily: 'Inter' },
     box(
-      { flexWrap: 'wrap', width: 1080, height: 1080, gap: 10, padding: 10, background: '#e0e7ff' },
+      { flexWrap: 'wrap', width: 1080, height: alturaGrade, gap: 10, padding: 10, background: '#e0e7ff', flexShrink: 0 },
       ...(grade.length
-        ? grade.map((f) => img(f, { width: grade.length === 1 ? 1060 : 525, height: grade.length <= 2 ? 1060 : 525, objectFit: 'cover', borderRadius: 24 }))
-        : [box({ width: 1060, height: 1060, alignItems: 'center', justifyContent: 'center', color: COR.marca, fontSize: 400, fontWeight: 700 }, 'F')]),
+        ? grade.map((f) =>
+            img(f, {
+              width: grade.length === 1 ? 1060 : 525,
+              height: grade.length <= 2 ? alturaGrade - 20 : (alturaGrade - 30) / 2,
+              objectFit: 'cover',
+              borderRadius: 24,
+            }),
+          )
+        : [box({ width: 1060, height: alturaGrade - 20, alignItems: 'center', justifyContent: 'center', color: COR.marca, fontSize: 360, fontWeight: 700 }, 'F')]),
     ),
     box(
-      { flexDirection: 'column', justifyContent: 'space-between', padding: '72px 72px 96px', flex: 1 },
-      box(
-        { flexDirection: 'column', gap: 20 },
-        box({ fontSize: 88, fontWeight: 700, color: COR.texto, lineHeight: 1.1 }, cortar(titulo, 40)),
-        box({ fontSize: 44, color: COR.suave }, `${total} ${total === 1 ? 'produto disponível' : 'produtos disponíveis'}`),
-      ),
-      box({ flexDirection: 'column', gap: 32, alignItems: 'flex-start' }, contatoWhatsapp(40, 'Toque no link ou chame no WhatsApp', whatsapp), logo(64)),
+      { flexDirection: 'column', justifyContent: 'flex-start', padding: `52px 72px ${FAIXA_LIVRE}px`, flex: 1, gap: 18 },
+      box({ fontSize: 80, fontWeight: 700, color: COR.texto, lineHeight: 1.1 }, cortar(titulo, 40)),
+      box({ fontSize: 40, color: COR.suave }, `${total} ${total === 1 ? 'produto disponível' : 'produtos disponíveis'}`),
+      box({ marginTop: 22 }, contatoWhatsapp(38, 'Toque no link ou chame no WhatsApp', whatsapp)),
+      box({ marginTop: 6 }, logo(52)),
     ),
   )
 }
