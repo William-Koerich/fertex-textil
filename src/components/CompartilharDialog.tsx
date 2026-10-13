@@ -111,6 +111,25 @@ export function CompartilharDialog({ open, onClose, titulo, url, texto, card, no
   }
 
   const linkFacebook = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(comOrigem(url, 'facebook'))}`
+  const celular = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+  /**
+   * No celular, o app do Facebook ignora o link de compartilhamento e só abre o feed. Por isso usamos o
+   * menu de compartilhar do aparelho: a pessoa escolhe "Facebook" e o app abre já com o link (e a arte da prévia).
+   * No computador, abre a página de compartilhar do Facebook numa janela.
+   */
+  async function compartilharFacebook() {
+    const link = comOrigem(url, 'facebook')
+    if (celular && 'share' in navigator) {
+      try {
+        await navigator.share({ title: titulo, url: link })
+        return
+      } catch (e) {
+        if ((e as DOMException)?.name === 'AbortError') return
+      }
+    }
+    if (!window.open(linkFacebook, 'compartilhar-facebook', 'width=640,height=640')) window.location.href = linkFacebook
+  }
   const linkWhatsapp = `https://wa.me/?text=${encodeURIComponent(`${texto.replace(/\u00a0/g, ' ')}\n${comOrigem(url, 'whatsapp')}`)}`
 
   return (
@@ -143,7 +162,13 @@ export function CompartilharDialog({ open, onClose, titulo, url, texto, card, no
 
         <div className="space-y-2">
           <Opcao href={linkWhatsapp} cor="bg-[#1f8a4c]" icone={<MessageCircle className="h-5 w-5" />} titulo="WhatsApp" descricao="Enviar para contatos ou grupos" />
-          <Opcao href={linkFacebook} cor="bg-[#1877f2]" icone={<IconeFacebook className="h-5 w-5" />} titulo="Facebook" descricao="Publicar no seu perfil ou página" />
+          <Opcao
+            onClick={compartilharFacebook}
+            cor="bg-[#1877f2]"
+            icone={<IconeFacebook className="h-5 w-5" />}
+            titulo="Facebook"
+            descricao={celular ? 'Escolha "Facebook" na lista que vai abrir' : 'Publicar no seu perfil ou página'}
+          />
           <Opcao
             onClick={imagemStories}
             cor="bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]"
