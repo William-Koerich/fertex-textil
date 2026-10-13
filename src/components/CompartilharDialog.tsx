@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Check, Copy, Download, MessageCircle, Share2, X } from 'lucide-react'
+import { Check, CircleDashed, Copy, Download, MessageCircle, Share2, X } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { IconeFacebook, IconeInstagram } from './IconesRedes'
 
@@ -50,9 +50,10 @@ function Opcao({ icone, titulo, descricao, onClick, href, cor }: { icone: ReactN
 /** Compartilhar loja/produto: WhatsApp, Facebook, Instagram (imagem para Stories + link) e copiar link. */
 export function CompartilharDialog({ open, onClose, titulo, url, texto, card, nomeArquivo }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
+  const celular = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
   const toast = useToast()
   const [copiado, setCopiado] = useState<string | null>(null)
-  const [baixando, setBaixando] = useState(false)
+  const [baixando, setBaixando] = useState<'whatsapp' | 'instagram' | null>(null)
   const [previaOk, setPreviaOk] = useState(true)
 
   useEffect(() => {
@@ -76,30 +77,61 @@ export function CompartilharDialog({ open, onClose, titulo, url, texto, card, no
     }
   }
 
-  /** Imagem vertical (1080×1920) para postar nos Stories do Instagram */
-  async function imagemStories() {
-    setBaixando(true)
+  // A imagem vertical é baixada assim que o diálogo abre: no celular o menu de compartilhar só pode ser
+  // aberto logo após o toque, então ela precisa estar pronta antes (senão o iPhone bloqueia o menu)
+  const imagemVertical = useRef<Promise<File | null> | null>(null)
+  useEffect(() => {
+    if (!open) return
+    imagemVertical.current = fetch(`/api/og?${card}&formato=story`)
+      .then(async (r) => {
+        if (!r.ok || !r.headers.get('content-type')?.startsWith('image/')) return null
+        return new File([await r.blob()], `${nomeArquivo}.png`, { type: 'image/png' })
+      })
+      .catch(() => null)
+  }, [open, card, nomeArquivo])
+
+  /**
+   * Imagem vertical (1080×1920) para Status do WhatsApp ou Stories do Instagram.
+   * Nesses lugares link não vira prévia: o que aparece é a imagem, com o link na legenda (WhatsApp)
+   * ou no adesivo de link (Instagram). O link é copiado antes, para colar caso a legenda não venha junto.
+   */
+  async function imagemVerticalPara(rede: 'whatsapp' | 'instagram') {
+    const link = comOrigem(url, rede)
+    const legenda = rede === 'whatsapp' ? `${texto.replace(/\u00a0/g, ' ')}\n${link}` : link
+    navigator.clipboard?.writeText(rede === 'whatsapp' ? legenda : link).catch(() => {})
+    setBaixando(rede)
     try {
-      const r = await fetch(`/api/og?${card}&formato=story`)
-      if (!r.ok || !r.headers.get('content-type')?.startsWith('image/')) throw new Error()
-      const arquivo = new File([await r.blob()], `${nomeArquivo}.png`, { type: 'image/png' })
-      // No celular abre a folha de compartilhar (escolha Instagram > Stories); no computador, baixa a imagem
-      if (navigator.canShare?.({ files: [arquivo] })) {
-        await navigator.share({ files: [arquivo], text: comOrigem(url, 'instagram') }).catch(() => {})
+      const arquivo = await (imagemVertical.current ?? Promise.resolve(null))
+      if (!arquivo) throw new Error('sem imagem')
+      if (celular && navigator.canShare?.({ files: [arquivo] })) {
+        try {
+          await navigator.share({ files: [arquivo], text: legenda })
+        } catch (e) {
+          if ((e as DOMException)?.name === 'AbortError') return
+          baixar(arquivo)
+        }
       } else {
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(arquivo)
-        a.download = arquivo.name
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+        baixar(arquivo)
       }
-      await navigator.clipboard?.writeText(comOrigem(url, 'instagram')).catch(() => {})
-      toast('Imagem pronta! O link também foi copiado: use o adesivo de link nos Stories.')
+      onClose() // fecha o diálogo para a instrução (toast) ficar visível
+      toast(
+        rede === 'whatsapp'
+          ? 'Escolha WhatsApp > Meu status. O texto com o link já foi copiado: se não aparecer na legenda, é só colar.'
+          : 'Escolha Instagram > Stories. O link foi copiado: use o adesivo "Link" nos Stories.',
+      )
     } catch {
-      toast('A imagem para Stories fica disponível depois que o app for publicado na Vercel.', 'erro')
+      toast('Não foi possível gerar a imagem agora. Verifique a internet e tente de novo.', 'erro')
     } finally {
-      setBaixando(false)
+      setBaixando(null)
     }
+  }
+
+  function baixar(arquivo: File) {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(arquivo)
+    a.download = arquivo.name
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
   }
 
   async function maisOpcoes() {
@@ -111,8 +143,6 @@ export function CompartilharDialog({ open, onClose, titulo, url, texto, card, no
   }
 
   const linkFacebook = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(comOrigem(url, 'facebook'))}`
-  const celular = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-
   /**
    * No celular, o app do Facebook ignora o link de compartilhamento e só abre o feed. Por isso usamos o
    * menu de compartilhar do aparelho: a pessoa escolhe "Facebook" e o app abre já com o link (e a arte da prévia).
@@ -161,7 +191,14 @@ export function CompartilharDialog({ open, onClose, titulo, url, texto, card, no
         )}
 
         <div className="space-y-2">
-          <Opcao href={linkWhatsapp} cor="bg-[#1f8a4c]" icone={<MessageCircle className="h-5 w-5" />} titulo="WhatsApp" descricao="Enviar para contatos ou grupos" />
+          <Opcao href={linkWhatsapp} cor="bg-[#1f8a4c]" icone={<MessageCircle className="h-5 w-5" />} titulo="WhatsApp: conversas" descricao="Enviar para contatos ou grupos (com prévia do link)" />
+          <Opcao
+            onClick={() => imagemVerticalPara('whatsapp')}
+            cor="bg-[#1f8a4c]"
+            icone={baixando === 'whatsapp' ? <Download className="h-5 w-5 animate-bounce" /> : <CircleDashed className="h-5 w-5" />}
+            titulo="Status do WhatsApp"
+            descricao={celular ? 'Imagem vertical com o link na legenda' : 'Baixar a imagem vertical (o link é copiado)'}
+          />
           <Opcao
             onClick={compartilharFacebook}
             cor="bg-[#1877f2]"
@@ -170,9 +207,9 @@ export function CompartilharDialog({ open, onClose, titulo, url, texto, card, no
             descricao={celular ? 'Escolha "Facebook" na lista que vai abrir' : 'Publicar no seu perfil ou página'}
           />
           <Opcao
-            onClick={imagemStories}
+            onClick={() => imagemVerticalPara('instagram')}
             cor="bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]"
-            icone={baixando ? <Download className="h-5 w-5 animate-bounce" /> : <IconeInstagram className="h-5 w-5" />}
+            icone={baixando === 'instagram' ? <Download className="h-5 w-5 animate-bounce" /> : <IconeInstagram className="h-5 w-5" />}
             titulo="Instagram Stories"
             descricao="Imagem vertical pronta + link copiado para o adesivo"
           />
