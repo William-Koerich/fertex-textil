@@ -42,6 +42,8 @@ supabase/migrations/         Migrations SQL (geradas pelo Drizzle + customizadas
   0019_funcoes_visitas.sql   pg_net, registro de visitas e estatísticas
   0020_ip_robos.sql          Rede (ASN) do IP e marcação de robô
   0021_filtro_robos.sql      Estatísticas ignoram datacenters (Facebook, Amazon, Google…)
+  0022_gps.sql               Localização do aparelho nas visitas + cache de endereços
+  0023_funcoes_gps.sql       Registro do GPS, bairro/cidade via OpenStreetMap e estatísticas
 api/og.ts                    Imagem do card de compartilhamento (Vercel Edge Function)
 api/preview.ts               HTML com a prévia dos links (Open Graph) para robôs do Facebook/WhatsApp
 edge/preview.ts              Monta título, descrição e imagem da prévia
@@ -156,6 +158,7 @@ O PWA só é instalável em HTTPS (ou `localhost`). Vercel e Netlify já servem 
 
 - A loja e as páginas de produto registram cada visita pela função `fertex_registrar_visita`. **O IP é lido no servidor** (cabeçalho `cf-connecting-ip` do Supabase), não no navegador. Visitas de vendedores não contam, e repetições do mesmo visitante na mesma página em 30 minutos também não.
 - **Robôs filtrados:** quando um link é compartilhado, servidores do Facebook/Instagram/WhatsApp (EUA, Suécia, Irlanda), da Amazon, do Google etc. abrem a página. A rede dona do IP (ASN) é guardada em `fertex_ip_geo`, e IPs de datacenter (`fertex_rede_de_robo`) não entram nas estatísticas. A tela mostra quantos acessos foram ignorados. Cloudflare, Akamai e Fastly não são filtrados, porque a "Retransmissão Privada" do iPhone usa essas redes.
+- **Localização exata (GPS):** ao abrir a loja, o visitante (nunca o vendedor) vê um aviso explicando o motivo, com os botões **Permitir** e **Agora não**. Só ao tocar em Permitir o navegador faz o pedido oficial. A posição é guardada **arredondada a ~100 m** (`fertex_registrar_localizacao`), e o bairro e a cidade vêm do OpenStreetMap (Nominatim, via `pg_net`, com cache por coordenada em `fertex_geo_coordenadas`). Quem já permitiu tem a posição lida sem nova pergunta; quem recusou não é perguntado de novo por 30 dias. Nas estatísticas, o GPS tem prioridade sobre o IP, e a tela de Visitas mostra Bairros e o selo GPS/IP em cada visita.
 - **Localização aproximada:** cada IP novo é consultado uma única vez em [freeipapi.com](https://freeipapi.com) (plano gratuito: uso comercial permitido, 60 consultas/min). A consulta sai do próprio banco via extensão `pg_net`, e o resultado fica em `fertex_ip_geo`.
 - **Tela Visitas** (vendedor; no celular, pelo atalho no Painel): visitas, pessoas únicas, cidades, gráfico por dia, de onde vieram (Instagram, Facebook, WhatsApp, link direto, outros), cidades, produtos mais vistos e as últimas visitas com o **IP parcialmente oculto**.
 - **LGPD:** a loja mostra um aviso de que a página, a origem e a cidade (pelo IP) são registradas para estatísticas. As visitas com mais de 1 ano são apagadas automaticamente. As tabelas não são acessíveis pela API (RLS sem policies); só as funções leem os dados.

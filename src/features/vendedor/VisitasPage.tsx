@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Bot, Eye, MapPin, Share2, Users } from 'lucide-react'
+import { Bot, Crosshair, Eye, MapPin, Share2, Users } from 'lucide-react'
 import { useAsync } from '@/lib/useAsync'
 import { carregarEstatisticas, formatarLocal, ROTULO_ORIGEM } from '@/lib/visitas'
 import type { EstatisticasVisitas } from '@/lib/visitas'
@@ -127,6 +127,11 @@ export default function VisitasPage() {
             <Tile label="Pessoas" valor={e.visitantes} icone={Users} />
             <Tile label="Cidades" valor={e.cidades} icone={MapPin} />
           </div>
+          <p className="flex items-start gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <Crosshair className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            {formatarNumero(e.com_gps)} de {formatarNumero(e.visitas)} visitas com localização exata (o visitante permitiu usar o GPS). As
+            demais usam a cidade aproximada pelo IP.
+          </p>
           {e.robos > 0 && (
             <p className="flex items-start gap-2 text-sm text-slate-500 dark:text-slate-400">
               <Bot className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -153,7 +158,7 @@ export default function VisitasPage() {
             </div>
           </section>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-2">
             <section className={card} aria-labelledby="titulo-origens">
               <h2 id="titulo-origens" className="mb-4 font-semibold">
                 De onde vieram
@@ -183,6 +188,24 @@ export default function VisitasPage() {
               )}
               {e.localizando > 0 && e.locais.length > 0 && (
                 <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{formatarNumero(e.localizando)} visita(s) ainda sendo localizadas.</p>
+              )}
+            </section>
+
+            <section className={card} aria-labelledby="titulo-bairros">
+              <h2 id="titulo-bairros" className="font-semibold">
+                Bairros
+              </h2>
+              <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">Só de quem permitiu a localização (GPS)</p>
+              {e.bairros.length ? (
+                <ListaBarras
+                  itens={e.bairros.map((b, i) => ({
+                    chave: String(i),
+                    valor: b.visitas,
+                    rotulo: `${b.bairro}, ${[b.cidade, b.regiao].filter(Boolean).join('/')}`,
+                  }))}
+                />
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">Ainda ninguém permitiu a localização no período.</p>
               )}
             </section>
 
@@ -224,7 +247,26 @@ export default function VisitasPage() {
                           {ROTULO_ORIGEM[u.origem]}
                         </span>
                       </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{formatarLocal(u) ?? (u.localizando ? 'Localizando…' : '—')}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          {[u.bairro, formatarLocal(u)].filter(Boolean).join(', ') || (u.localizando ? 'Localizando…' : '—')}
+                          {u.fonte === 'gps' && u.lat != null && u.lon != null ? (
+                            <a
+                              href={`https://www.google.com/maps?q=${u.lat},${u.lon}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Ver região no mapa (precisão de ~100 m)"
+                              className="rounded bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700 hover:underline dark:bg-emerald-950 dark:text-emerald-300"
+                            >
+                              GPS
+                            </a>
+                          ) : (
+                            <span title="Cidade aproximada pela operadora" className="rounded bg-slate-100 px-1.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                              IP
+                            </span>
+                          )}
+                        </span>
+                      </td>
                       <td className="py-2 font-mono text-xs whitespace-nowrap text-slate-500 dark:text-slate-400">{u.ip ?? '—'}</td>
                     </tr>
                   ))}
@@ -232,7 +274,8 @@ export default function VisitasPage() {
               </table>
             </div>
             <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-              A localização é aproximada (pelo IP da operadora) e o IP aparece parcialmente oculto para proteger a privacidade dos visitantes.
+              GPS: região de ~100 m informada pelo aparelho de quem permitiu (toque em GPS para ver no mapa). IP: cidade aproximada pela
+              operadora, que no celular pode ser a cidade da central da operadora. O IP aparece parcialmente oculto por privacidade.
             </p>
           </section>
         </div>

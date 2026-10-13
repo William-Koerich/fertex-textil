@@ -21,6 +21,7 @@ import { InstallButton } from '@/components/pwa/InstallButton'
 import { ThemeSegmented, ThemeToggleButton } from '@/components/ThemeToggle'
 import { FullScreenLoading } from '@/components/ui/Spinner'
 import { AppLayout } from './AppLayout'
+import { AvisoLocalizacao } from '@/components/AvisoLocalizacao'
 import type { NavItem } from './AppLayout'
 
 /** Disparado pelas telas que mudam pedidos, para atualizar o contador do menu. */
@@ -140,9 +141,14 @@ export function LojaLayout() {
   ]
   if (session && profile) items.push({ to: '/pedidos', label: 'Pedidos', icon: ClipboardList })
 
-  return session && profile ? (
-    <AppLayout items={items} headerActions={<HeaderActions />} sidebarFooter={<SidebarUser />} />
-  ) : (
-    <AppLayout items={items} headerActions={<HeaderVisitante />} sidebarFooter={<SidebarVisitante />} />
+  return (
+    <>
+      {session && profile ? (
+        <AppLayout items={items} headerActions={<HeaderActions />} sidebarFooter={<SidebarUser />} />
+      ) : (
+        <AppLayout items={items} headerActions={<HeaderVisitante />} sidebarFooter={<SidebarVisitante />} />
+      )}
+      <AvisoLocalizacao />
+    </>
   )
 }

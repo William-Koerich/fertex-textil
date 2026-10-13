@@ -5,7 +5,7 @@ export type Origem = 'instagram' | 'facebook' | 'whatsapp' | 'direto' | 'outro'
 const CHAVE_VISITANTE = 'fertex-visitante'
 const CHAVE_ORIGEM = 'fertex-origem'
 
-function lerOuCriarVisitante(): string | null {
+export function lerOuCriarVisitante(): string | null {
   try {
     let id = localStorage.getItem(CHAVE_VISITANTE)
     if (!id) {
@@ -49,6 +49,10 @@ export function detectarOrigem(): Origem {
 }
 
 const jaRegistradas = new Set<string>()
+let ultimaVisita: PromiseLike<unknown> = Promise.resolve()
+
+/** Espera os registros de visita em andamento (a localização é anexada às visitas já gravadas). */
+export const aguardarVisitas = () => Promise.resolve(ultimaVisita)
 
 /** Registra a visita (o IP e a localização são obtidos no servidor). Falhas são ignoradas. */
 export function registrarVisita(alvo: { vendedorId?: string | null; produtoId?: string | null }) {
@@ -62,7 +66,7 @@ export function registrarVisita(alvo: { vendedorId?: string | null; produtoId?: 
   } catch {
     /* ignora */
   }
-  supabase
+  ultimaVisita = supabase
     .rpc('fertex_registrar_visita', {
       p_vendedor_id: alvo.vendedorId ?? null,
       p_produto_id: alvo.produtoId ?? null,
@@ -84,9 +88,12 @@ export interface EstatisticasVisitas {
   robos: number
   visitantes: number
   cidades: number
+  /** visitas com localização exata (GPS autorizado pelo visitante) */
+  com_gps: number
   localizando: number
   serie: { dia: string; visitas: number }[]
   origens: { origem: Origem; visitas: number }[]
+  bairros: { bairro: string; cidade: string | null; regiao: string | null; visitas: number }[]
   locais: { cidade: string | null; regiao: string | null; pais: string | null; pais_sigla: string | null; visitas: number }[]
   produtos: { produto_id: string; nome: string; visitas: number }[]
   ultimas: {
@@ -99,6 +106,10 @@ export interface EstatisticasVisitas {
     pais_sigla: string | null
     localizando: boolean
     ip: string | null
+    bairro: string | null
+    fonte: 'gps' | 'ip'
+    lat: number | null
+    lon: number | null
   }[]
 }
 

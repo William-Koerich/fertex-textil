@@ -287,8 +287,9 @@ export default function VitrinePage() {
         </ul>
       )}
       <p className="mt-10 text-center text-xs text-slate-400 dark:text-slate-500">
-        Para estatísticas de visitas, registramos a página acessada, de onde você veio e a localização aproximada (cidade) pelo
-        endereço IP. Esses dados ficam guardados por até 1 ano e são vistos apenas pelo vendedor.
+        Para estatísticas de visitas, registramos a página acessada, de onde você veio e a cidade aproximada pelo endereço IP. Se
+        você permitir, usamos também a localização do aparelho, guardando só a região (cerca de 100 m), nunca o endereço. Esses
+        dados ficam guardados por até 1 ano e são vistos apenas pelo vendedor.
       </p>
       {vendedorId && (
         <CompartilharDialog

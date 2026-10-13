@@ -8,6 +8,8 @@ import { sql } from 'drizzle-orm'
 import {
   bigint,
   check,
+  doublePrecision,
+  primaryKey,
   index,
   integer,
   numeric,
@@ -208,6 +210,11 @@ export const visitas = pgTable(
     /** id aleatório guardado no navegador, para contar visitantes únicos */
     visitante: text('visitante'),
     ip: text('ip'),
+    /** localização do aparelho (GPS), só se a pessoa autorizar; arredondada a ~100 m */
+    lat: doublePrecision('lat'),
+    lon: doublePrecision('lon'),
+    /** precisão informada pelo aparelho, em metros */
+    precisao_m: integer('precisao_m'),
   },
   (t) => [
     index('fertex_visitas_vendedor_idx').on(t.vendedor_id, t.criado_em),
@@ -234,6 +241,23 @@ export const ipGeo = pgTable('fertex_ip_geo', {
   tentativas: integer('tentativas').notNull().default(0),
   atualizado_em: timestamp('atualizado_em', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }).enableRLS()
+
+/** Cache do endereço (bairro/cidade) de cada coordenada arredondada, via OpenStreetMap (Nominatim). */
+export const geoCoordenadas = pgTable(
+  'fertex_geo_coordenadas',
+  {
+    lat: doublePrecision('lat').notNull(),
+    lon: doublePrecision('lon').notNull(),
+    bairro: text('bairro'),
+    cidade: text('cidade'),
+    uf: text('uf'),
+    pais_sigla: text('pais_sigla'),
+    request_id: bigint('request_id', { mode: 'number' }),
+    tentativas: integer('tentativas').notNull().default(0),
+    atualizado_em: timestamp('atualizado_em', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.lat, t.lon] })],
+).enableRLS()
 
 export type Perfil = (typeof perfilEnum.enumValues)[number]
 export type StatusPedido = (typeof statusPedidoEnum.enumValues)[number]
