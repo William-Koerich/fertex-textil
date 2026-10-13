@@ -38,7 +38,7 @@
       "destination": "/api/preview"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|assets/|icons/|sw\\.js|workbox-|manifest\\.webmanifest|robots\\.txt|favicon\\.svg).*)",
       "destination": "/index.html"
     }
   ],

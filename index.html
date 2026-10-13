@@ -22,6 +22,28 @@
     <meta name="apple-mobile-web-app-title" content="Fertex" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <script>
+      // Recuperação: se um script do app não carregar (ex.: cópia antiga/corrompida guardada pelo service worker
+      // depois de uma nova publicação), apaga as cópias guardadas e recarrega uma única vez.
+      window.addEventListener(
+        'error',
+        function (e) {
+          var el = e.target
+          if (!el || el.tagName !== 'SCRIPT' || !/\/assets\//.test(el.src || '')) return
+          try {
+            if (sessionStorage.getItem('fertex-recuperado')) return
+            sessionStorage.setItem('fertex-recuperado', '1')
+          } catch (x) {
+            return
+          }
+          var limpar = []
+          if (navigator.serviceWorker) limpar.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister() })) }))
+          if (window.caches) limpar.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k) })) }))
+          Promise.all(limpar).catch(function () {}).then(function () { location.reload() })
+        },
+        true,
+      )
+    </script>
+    <script>
       // Aplica o tema antes da renderização para evitar "piscar"
       try {
         var t = localStorage.getItem('fertex-tema')
