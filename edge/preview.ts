@@ -2,7 +2,7 @@
  * Prévia dos links (Open Graph) para robôs de redes sociais.
  * Usado por api/preview.ts, que só recebe robôs (regras "has user-agent" no vercel.json).
  */
-import { buscarProduto, contarProdutos, nomeDoVendedor, precoPor, produtosDoVendedor, textoCores, textoMinimo } from './dados'
+import { buscarProduto, contarProdutos, nomeDoVendedor, precoPor, textoCores, textoMinimo } from './dados'
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -43,9 +43,10 @@ export function tags(m: Meta, url: string) {
 }
 
 export async function montarMeta(url: URL, userAgent: string): Promise<Meta> {
-  // WhatsApp costuma ignorar imagens pesadas: para ele usamos a foto (JPG) em vez do card gerado (PNG)
+  // WhatsApp costuma ignorar imagens pesadas: para ele vai a mesma arte em versão leve (600×315, ~300 KB)
   const whatsapp = /whatsapp/i.test(userAgent)
-  const og = (q: string) => `${url.origin}/api/og${q}`
+  const og = (q: string) => `${url.origin}/api/og${q}${whatsapp ? `${q ? '&' : '?'}tamanho=leve` : ''}`
+  const dimensoes = whatsapp ? { largura: 600, altura: 315 } : { largura: 1200, altura: 630 }
   const produtoId = url.pathname.match(/^\/loja\/([^/]+)/)?.[1]
 
   if (produtoId) {
@@ -56,8 +57,8 @@ export async function montarMeta(url: URL, userAgent: string): Promise<Meta> {
       return {
         titulo: `${p.nome} · ${precoPor(p)}`,
         descricao: [...partes.filter(Boolean), 'Faça seu pedido pelo WhatsApp.'].join(' · '),
-        imagem: whatsapp && p.foto_url ? p.foto_url : og(`?produto=${p.id}`),
-        ...(whatsapp && p.foto_url ? {} : { largura: 1200, altura: 630 }),
+        imagem: og(`?produto=${p.id}`),
+        ...dimensoes,
         tipo: 'product',
         extras: `<meta property="product:price:amount" content="${p.preco.toFixed(2)}" />\n    <meta property="product:price:currency" content="BRL" />`,
       }
@@ -65,14 +66,13 @@ export async function montarMeta(url: URL, userAgent: string): Promise<Meta> {
   }
 
   const vendedorId = url.searchParams.get('vendedor')
-  const [nome, total, lista] = await Promise.all([nomeDoVendedor(vendedorId), contarProdutos(vendedorId), produtosDoVendedor(vendedorId, 1)])
+  const [nome, total] = await Promise.all([nomeDoVendedor(vendedorId), contarProdutos(vendedorId)])
   const titulo = nome ? `Loja de ${nome} · Fertex Vendas` : 'Fertex Vendas · Catálogo e pedidos pelo WhatsApp'
-  const foto = lista[0]?.foto_url
   return {
     titulo,
     descricao: `${total} ${total === 1 ? 'produto disponível' : 'produtos disponíveis'}. Veja o catálogo e faça seu pedido pelo WhatsApp.`,
-    imagem: whatsapp && foto ? foto : og(nome && vendedorId ? `?vendedor=${vendedorId}` : ''),
-    ...(whatsapp && foto ? {} : { largura: 1200, altura: 630 }),
+    imagem: og(nome && vendedorId ? `?vendedor=${vendedorId}` : ''),
+    ...dimensoes,
     tipo: 'website',
   }
 }

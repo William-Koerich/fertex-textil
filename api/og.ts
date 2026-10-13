@@ -174,6 +174,8 @@ function storyLoja(titulo: string, total: number, fotos: string[]) {
 export default async function handler(req: Request) {
   const { searchParams } = new URL(req.url)
   const story = searchParams.get('formato') === 'story'
+  // Versão leve para o WhatsApp (que costuma ignorar imagens pesadas): mesma arte em 600×315
+  const leve = !story && searchParams.get('tamanho') === 'leve'
   const produtoId = searchParams.get('produto')
   const vendedorId = searchParams.get('vendedor')
   const [regular, negrito] = await Promise.all([carregarFonte(400), carregarFonte(700)])
@@ -194,9 +196,18 @@ export default async function handler(req: Request) {
     elemento = story ? storyLoja(titulo, total, fotos) : cardLoja(titulo, total, fotos)
   }
 
+  if (leve) {
+    // Gera a arte no tamanho normal e desenha a imagem pronta em 600×315 (fica com ~1/4 do peso)
+    const grande = new ImageResponse(elemento, { width: 1200, height: 630, ...(fonts.length ? { fonts } : {}) })
+    const bytes = new Uint8Array(await grande.arrayBuffer())
+    let bin = ''
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+    elemento = box({ width: 600, height: 315 }, img(`data:image/png;base64,${btoa(bin)}`, { width: 600, height: 315 }))
+  }
+
   return new ImageResponse(elemento, {
-    width: story ? 1080 : 1200,
-    height: story ? 1920 : 630,
+    width: story ? 1080 : leve ? 600 : 1200,
+    height: story ? 1920 : leve ? 315 : 630,
     ...(fonts.length ? { fonts } : {}),
     headers: { 'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
   })
