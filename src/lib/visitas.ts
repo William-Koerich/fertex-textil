@@ -53,7 +53,8 @@ const jaRegistradas = new Set<string>()
 /** Registra a visita (o IP e a localização são obtidos no servidor). Falhas são ignoradas. */
 export function registrarVisita(alvo: { vendedorId?: string | null; produtoId?: string | null }) {
   const chave = `${alvo.vendedorId ?? ''}|${alvo.produtoId ?? ''}`
-  if (jaRegistradas.has(chave)) return
+  // Navegadores automatizados (robôs que executam JavaScript) não contam
+  if (jaRegistradas.has(chave) || navigator.webdriver) return
   jaRegistradas.add(chave)
   let referrer: string | null = null
   try {
@@ -79,6 +80,8 @@ export interface EstatisticasVisitas {
   inicio: string
   fim: string
   visitas: number
+  /** acessos de robôs/datacenters (Facebook, Amazon, Google…) ignorados */
+  robos: number
   visitantes: number
   cidades: number
   localizando: number

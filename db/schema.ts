@@ -224,6 +224,11 @@ export const ipGeo = pgTable('fertex_ip_geo', {
   regiao_sigla: text('regiao_sigla'),
   pais: text('pais'),
   pais_sigla: text('pais_sigla'),
+  /** rede dona do IP (ex.: 32934 Facebook, 28573 Claro) */
+  asn: integer('asn'),
+  asn_org: text('asn_org'),
+  /** IP de datacenter (robôs do Facebook, Amazon, Google…): não conta nas estatísticas */
+  robo: boolean('robo').notNull().default(false),
   /** id da requisição HTTP (pg_net) ainda não processada */
   request_id: bigint('request_id', { mode: 'number' }),
   tentativas: integer('tentativas').notNull().default(0),

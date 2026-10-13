@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Eye, MapPin, Share2, Users } from 'lucide-react'
+import { Bot, Eye, MapPin, Share2, Users } from 'lucide-react'
 import { useAsync } from '@/lib/useAsync'
 import { carregarEstatisticas, formatarLocal, ROTULO_ORIGEM } from '@/lib/visitas'
 import type { EstatisticasVisitas } from '@/lib/visitas'
@@ -127,6 +127,13 @@ export default function VisitasPage() {
             <Tile label="Pessoas" valor={e.visitantes} icone={Users} />
             <Tile label="Cidades" valor={e.cidades} icone={MapPin} />
           </div>
+          {e.robos > 0 && (
+            <p className="flex items-start gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <Bot className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              {formatarNumero(e.robos)} {e.robos === 1 ? 'acesso de robô foi ignorado' : 'acessos de robôs foram ignorados'} (servidores do Facebook,
+              Instagram, WhatsApp, Amazon, Google…, que abrem o link para montar a prévia quando ele é compartilhado).
+            </p>
+          )}
 
           <section className={card} aria-labelledby="titulo-visitas-dia">
             <h2 id="titulo-visitas-dia" className="font-semibold">
