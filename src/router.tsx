@@ -77,6 +77,11 @@ export const router = createBrowserRouter([
           { path: 'vendas', element: <VendasPage /> },
           { path: 'pedidos-recebidos', element: <PedidosRecebidosPage /> },
           { path: 'perfil', element: <PerfilPage /> },
+          {
+            path: 'visitas',
+            lazy: () => import('@/features/vendedor/VisitasPage').then((m) => ({ Component: m.default })),
+            hydrateFallbackElement: <LoadingState />,
+          },
         ],
       },
       {

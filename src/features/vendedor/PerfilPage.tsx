@@ -8,6 +8,7 @@ import { mensagemErro } from '@/lib/errors'
 import { linkDaLoja } from '@/lib/vendedores'
 import { formatarWhatsapp, normalizarWhatsapp } from '@/lib/whatsapp'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { CompartilharDialog } from '@/components/CompartilharDialog'
 import { Button, buttonClass } from '@/components/ui/Button'
 import { Input, inputClass } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/States'
@@ -22,6 +23,7 @@ export default function PerfilPage() {
   const [erros, setErros] = useState<{ nome?: string; whatsapp?: string }>({})
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [compartilhando, setCompartilhando] = useState(false)
   const link = profile ? linkDaLoja(profile.id) : ''
 
   async function salvar(e: FormEvent) {
@@ -51,14 +53,6 @@ export default function PerfilPage() {
       toast('Link copiado! Cole no WhatsApp, Instagram…')
     } catch {
       toast('Não foi possível copiar. Selecione o link e copie manualmente.', 'erro')
-    }
-  }
-
-  async function compartilhar() {
-    try {
-      await navigator.share({ title: `Loja de ${profile?.nome}`, text: 'Veja meus produtos e faça seu pedido:', url: link })
-    } catch {
-      /* usuário cancelou */
     }
   }
 
@@ -102,20 +96,30 @@ export default function PerfilPage() {
           </div>
           <input readOnly value={link} aria-label="Link da sua loja" onFocus={(e) => e.target.select()} className={`${inputClass()} text-sm`} />
           <div className="flex flex-wrap gap-2">
-            <Button onClick={copiar}>
+            <Button variant="secondary" onClick={copiar}>
               <Copy className="h-4 w-4" aria-hidden /> Copiar link
             </Button>
-            {'share' in navigator && (
-              <Button variant="secondary" onClick={compartilhar}>
-                <Share2 className="h-4 w-4" aria-hidden /> Compartilhar
-              </Button>
-            )}
+            <Button variant="secondary" onClick={() => setCompartilhando(true)}>
+              <Share2 className="h-4 w-4" aria-hidden /> Compartilhar no WhatsApp, Instagram…
+            </Button>
             <Link to={`/loja?vendedor=${profile?.id}`} className={buttonClass('ghost')}>
               <ExternalLink className="h-4 w-4" aria-hidden /> Ver minha loja
             </Link>
           </div>
         </section>
       </div>
+
+      {profile && (
+        <CompartilharDialog
+          open={compartilhando}
+          onClose={() => setCompartilhando(false)}
+          titulo="Compartilhar minha loja"
+          url={link}
+          texto={`Confira os produtos da Loja de ${profile.nome} e faça seu pedido pelo WhatsApp:`}
+          card={`vendedor=${profile.id}`}
+          nomeArquivo="minha-loja-stories"
+        />
+      )}
     </>
   )
 }

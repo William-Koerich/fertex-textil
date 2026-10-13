@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Eye, Plus, Search, Store } from 'lucide-react'
+import { Eye, Plus, Search, Share2, Store } from 'lucide-react'
+import { CompartilharDialog } from '@/components/CompartilharDialog'
+import { Button } from '@/components/ui/Button'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { carregarVendedores } from '@/lib/vendedores'
+import { registrarVisita } from '@/lib/visitas'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { atendeMinimo, listarProdutosAtivos } from '@/lib/produtos'
@@ -119,12 +122,18 @@ export default function VitrinePage() {
   const { profile } = useAuth()
   const previa = profile?.perfil === 'vendedor'
   const [vendedores, setVendedores] = useState<Map<string, string>>(new Map())
+  const [compartilhando, setCompartilhando] = useState(false)
 
   useEffect(() => {
     carregarVendedores()
       .then(setVendedores)
       .catch(() => {})
   }, [])
+
+  // Estatísticas de visitas (o servidor ignora visitas de vendedores)
+  useEffect(() => {
+    registrarVisita({ vendedorId: vendedorId || null })
+  }, [vendedorId])
 
   // Atualiza a URL sem empilhar histórico, para o "voltar" do detalhe manter os filtros
   const atualizar = (k: string, v: string) =>
@@ -167,14 +176,21 @@ export default function VitrinePage() {
         title={vendedorId ? (nomeLoja ? `Loja de ${nomeLoja}` : 'Loja') : 'Loja'}
         subtitle={vendedorId ? 'Escolha os produtos e envie seu pedido pelo WhatsApp.' : 'Encontre os produtos que você precisa.'}
         actions={
-          vendedorId && variosVendedores ? (
-            <button
-              type="button"
-              onClick={() => atualizar('vendedor', '')}
-              className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
-            >
-              Ver todos os vendedores
-            </button>
+          vendedorId ? (
+            <>
+              <Button variant="secondary" className="px-3 py-2" onClick={() => setCompartilhando(true)}>
+                <Share2 className="h-4 w-4" aria-hidden /> Compartilhar
+              </Button>
+              {variosVendedores && (
+                <button
+                  type="button"
+                  onClick={() => atualizar('vendedor', '')}
+                  className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                >
+                  Ver todos os vendedores
+                </button>
+              )}
+            </>
           ) : undefined
         }
       />
@@ -269,6 +285,21 @@ export default function VitrinePage() {
             />
           ))}
         </ul>
+      )}
+      <p className="mt-10 text-center text-xs text-slate-400 dark:text-slate-500">
+        Para estatísticas de visitas, registramos a página acessada, de onde você veio e a localização aproximada (cidade) pelo
+        endereço IP. Esses dados ficam guardados por até 1 ano e são vistos apenas pelo vendedor.
+      </p>
+      {vendedorId && (
+        <CompartilharDialog
+          open={compartilhando}
+          onClose={() => setCompartilhando(false)}
+          titulo="Compartilhar loja"
+          url={`${window.location.origin}/loja?vendedor=${vendedorId}`}
+          texto={`Confira os produtos${nomeLoja ? ` da Loja de ${nomeLoja}` : ''} e faça seu pedido pelo WhatsApp:`}
+          card={`vendedor=${vendedorId}`}
+          nomeArquivo="loja-stories"
+        />
       )}
     </>
   )

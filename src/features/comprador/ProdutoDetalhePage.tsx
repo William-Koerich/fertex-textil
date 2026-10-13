@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Share2, ShoppingCart } from 'lucide-react'
+import { CompartilharDialog } from '@/components/CompartilharDialog'
 import { chaveItem, useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { carregarVendedores } from '@/lib/vendedores'
+import { registrarVisita } from '@/lib/visitas'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { buscarProduto, ESTOQUE_BAIXO } from '@/lib/produtos'
@@ -13,7 +15,7 @@ import { LoadingState } from '@/components/ui/Spinner'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
-import { formatarQuantidade, siglaUnidade, UNIDADES } from '@/lib/unidades'
+import { formatarPrecoPor, formatarQuantidade, siglaUnidade, UNIDADES } from '@/lib/unidades'
 
 export default function ProdutoDetalhePage() {
   const { id } = useParams()
@@ -24,9 +26,14 @@ export default function ProdutoDetalhePage() {
   const [erroCor, setErroCor] = useState(false)
   const toast = useToast()
   const [qtd, setQtd] = useState(1)
+  const [compartilhando, setCompartilhando] = useState(false)
   const { profile } = useAuth()
   const previa = profile?.perfil === 'vendedor'
   const [vendedores, setVendedores] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    if (produto?.ativo && !produto.excluido_em) registrarVisita({ produtoId: produto.id })
+  }, [produto])
+
   useEffect(() => {
     carregarVendedores()
       .then(setVendedores)
@@ -78,7 +85,12 @@ export default function ProdutoDetalhePage() {
         <ProdutoFoto url={produto.foto_url} nome={produto.nome} className="aspect-square w-full rounded-2xl" />
         <div className="flex flex-col">
           <span className="text-sm text-slate-500 dark:text-slate-400">{produto.categoria}</span>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">{produto.nome}</h1>
+          <div className="mt-1 flex items-start justify-between gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">{produto.nome}</h1>
+            <Button variant="secondary" className="shrink-0 px-3 py-2" onClick={() => setCompartilhando(true)}>
+              <Share2 className="h-4 w-4" aria-hidden /> Compartilhar
+            </Button>
+          </div>
           {vendedores.get(produto.vendedor_id) && (
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Vendido por{' '}
@@ -206,6 +218,15 @@ export default function ProdutoDetalhePage() {
           </div>
         </div>
       </div>
+      <CompartilharDialog
+        open={compartilhando}
+        onClose={() => setCompartilhando(false)}
+        titulo="Compartilhar produto"
+        url={`${window.location.origin}/loja/${produto.id}`}
+        texto={`${produto.nome} por ${formatarPrecoPor(produto.preco, produto.unidade)}. Faça seu pedido pelo WhatsApp:`}
+        card={`produto=${produto.id}`}
+        nomeArquivo={`produto-${produto.id.slice(0, 8)}-stories`}
+      />
     </>
   )
 }

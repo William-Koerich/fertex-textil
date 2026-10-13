@@ -16,6 +16,7 @@ import { EmptyState, ErrorState } from '@/components/ui/States'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ProdutoFoto } from '@/components/ProdutoFoto'
 import { RegistrarVendaDialog } from './RegistrarVendaDialog'
+import { CompartilharDialog } from '@/components/CompartilharDialog'
 import { formatarPrecoPor, formatarQuantidade } from '@/lib/unidades'
 
 const normalizar = (s: string) =>
@@ -58,6 +59,7 @@ export default function ProdutosPage() {
   const [excluindo, setExcluindo] = useState<Produto | null>(null)
   const [processando, setProcessando] = useState(false)
   const [vendendo, setVendendo] = useState<Produto | null>(null)
+  const [compartilhando, setCompartilhando] = useState<Produto | null>(null)
 
   const filtrados = useMemo(() => {
     const q = normalizar(busca.trim())
@@ -166,6 +168,14 @@ export default function ProdutosPage() {
                     </button>
                   </div>
                   <div className="flex flex-col">
+                    <IconButton
+                      onClick={() => setCompartilhando(p)}
+                      aria-label={`Compartilhar ${p.nome}`}
+                      title="Compartilhar"
+                      disabled={!p.ativo}
+                    >
+                      <Share2 className="h-5 w-5" />
+                    </IconButton>
                     <Link
                       to={`/produtos/${p.id}/editar`}
                       aria-label={`Editar ${p.nome}`}
@@ -188,6 +198,18 @@ export default function ProdutosPage() {
             </ul>
           )}
         </>
+      )}
+
+      {compartilhando && (
+        <CompartilharDialog
+          open
+          onClose={() => setCompartilhando(null)}
+          titulo={`Compartilhar ${compartilhando.nome}`}
+          url={`${window.location.origin}/loja/${compartilhando.id}`}
+          texto={`${compartilhando.nome} por ${formatarPrecoPor(compartilhando.preco, compartilhando.unidade)}. Faça seu pedido pelo WhatsApp:`}
+          card={`produto=${compartilhando.id}`}
+          nomeArquivo={`produto-${compartilhando.id.slice(0, 8)}-stories`}
+        />
       )}
 
       <RegistrarVendaDialog

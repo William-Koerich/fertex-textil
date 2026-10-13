@@ -1,13 +1,41 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import type { Plugin } from 'vite'
+
+/** Em desenvolvimento, serve /api/og (função da Vercel) para ver a prévia de compartilhamento localmente */
+function apiOgLocal(): Plugin {
+  return {
+    name: 'fertex-api-og-local',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/api/og', async (req, res) => {
+        try {
+          const env = loadEnv('development', process.cwd(), 'NEXT_PUBLIC_')
+          Object.assign(process.env, env)
+          // Recarrega sempre a versão atual (o arquivo fica fora de src e pode não ser invalidado sozinho)
+          server.moduleGraph.invalidateAll()
+          const { default: handler } = await server.ssrLoadModule('/api/og.ts')
+          const resposta: Response = await handler(new Request(`http://localhost${req.originalUrl}`))
+          res.statusCode = resposta.status
+          resposta.headers.forEach((v, k) => res.setHeader(k, v))
+          res.end(Buffer.from(await resposta.arrayBuffer()))
+        } catch (e) {
+          res.statusCode = 500
+          res.end(String(e))
+        }
+      })
+    },
+  }
+}
 
 export default defineConfig({
   // Expõe ao front apenas as variáveis NEXT_PUBLIC_* (DATABASE_URL nunca vai para o bundle)
   envPrefix: 'NEXT_PUBLIC_',
   plugins: [
+    apiOgLocal(),
     react(),
     tailwindcss(),
     VitePWA({

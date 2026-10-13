@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { ArrowDownRight, ArrowUpRight, TriangleAlert } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, ChevronRight, Eye, TriangleAlert } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAsync } from '@/lib/useAsync'
 import { carregarDashboard } from '@/lib/dashboard'
@@ -305,6 +305,22 @@ export default function DashboardPage() {
               </p>
             </Link>
           </div>
+
+          <Link
+            to="/visitas"
+            className={`${card} flex items-center justify-between gap-3 transition-colors hover:border-brand-300 dark:hover:border-brand-800`}
+          >
+            <span className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300">
+                <Eye className="h-5 w-5" aria-hidden />
+              </span>
+              <span>
+                <span className="block font-semibold">Visitas da loja</span>
+                <span className="block text-sm text-slate-500 dark:text-slate-400">Quantas pessoas entraram, de onde e de qual cidade</span>
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5 text-slate-400" aria-hidden />
+          </Link>
 
           <GraficoFaturamento d={d} dias={dias} />
 

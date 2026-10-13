@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import {
   ClipboardList,
+  Eye,
   Inbox,
   LayoutDashboard,
   LogIn,
@@ -120,6 +121,7 @@ export function VendedorLayout() {
     { to: '/produtos', label: 'Produtos', icon: Package },
     { to: '/pedidos-recebidos', label: 'Pedidos', icon: Inbox, badge: pendentes },
     { to: '/vendas', label: 'Vendas', icon: Receipt },
+    { to: '/visitas', label: 'Visitas', icon: Eye, soDesktop: true },
     { to: '/perfil', label: 'Perfil', icon: UserRound },
   ]
   return <AppLayout items={items} headerActions={<HeaderActions />} sidebarFooter={<SidebarUser />} />

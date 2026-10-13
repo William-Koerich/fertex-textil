@@ -6,6 +6,7 @@
  */
 import { sql } from 'drizzle-orm'
 import {
+  bigint,
   check,
   index,
   integer,
@@ -188,6 +189,46 @@ export const itensPedido = pgTable(
     }),
   ],
 ).enableRLS()
+
+/**
+ * Visitas à loja/produtos (estatísticas do vendedor). Gravadas só pela função fertex_registrar_visita,
+ * que captura o IP no servidor. Sem policies: ninguém lê/escreve direto (RLS ativo).
+ */
+export const visitas = pgTable(
+  'fertex_visitas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    criado_em: criadoEm(),
+    /** vendedor da página visitada (null = loja geral, com todos os vendedores) */
+    vendedor_id: uuid('vendedor_id').references(() => profiles.id, { onDelete: 'cascade' }),
+    produto_id: uuid('produto_id').references(() => produtos.id, { onDelete: 'set null' }),
+    /** instagram | facebook | whatsapp | direto | outro */
+    origem: text('origem').notNull().default('direto'),
+    referrer: text('referrer'),
+    /** id aleatório guardado no navegador, para contar visitantes únicos */
+    visitante: text('visitante'),
+    ip: text('ip'),
+  },
+  (t) => [
+    index('fertex_visitas_vendedor_idx').on(t.vendedor_id, t.criado_em),
+    index('fertex_visitas_produto_idx').on(t.produto_id),
+    index('fertex_visitas_ip_idx').on(t.ip),
+  ],
+).enableRLS()
+
+/** Cache da localização aproximada de cada IP (consultada uma vez por IP em freeipapi.com). */
+export const ipGeo = pgTable('fertex_ip_geo', {
+  ip: text('ip').primaryKey(),
+  cidade: text('cidade'),
+  regiao: text('regiao'),
+  regiao_sigla: text('regiao_sigla'),
+  pais: text('pais'),
+  pais_sigla: text('pais_sigla'),
+  /** id da requisição HTTP (pg_net) ainda não processada */
+  request_id: bigint('request_id', { mode: 'number' }),
+  tentativas: integer('tentativas').notNull().default(0),
+  atualizado_em: timestamp('atualizado_em', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}).enableRLS()
 
 export type Perfil = (typeof perfilEnum.enumValues)[number]
 export type StatusPedido = (typeof statusPedidoEnum.enumValues)[number]

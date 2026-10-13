@@ -127,6 +127,20 @@
       "when": 1791570465283,
       "tag": "0017_minimo_por_cor",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791893211835,
+      "tag": "0018_visitas",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791893212812,
+      "tag": "0019_funcoes_visitas",
+      "breakpoints": true
     }
   ]
 }

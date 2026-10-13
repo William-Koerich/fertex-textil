@@ -38,6 +38,11 @@ supabase/migrations/         Migrations SQL (geradas pelo Drizzle + customizadas
   0015_cores.sql             Cores do produto e cor do item vendido
   0016_funcoes_cores.sql     RPCs com cor; baixa de estoque somando as cores do mesmo produto
   0017_minimo_por_cor.sql    Pedido mínimo passa a valer para cada cor
+  0018_visitas.sql           Tabelas de visitas e cache de localização por IP
+  0019_funcoes_visitas.sql   pg_net, registro de visitas e estatísticas
+api/og.ts                    Imagem do card de compartilhamento (Vercel Edge Function)
+middleware.ts                Prévia dos links (Open Graph) para robôs do Facebook/WhatsApp (Vercel)
+edge/dados.ts                Dados públicos usados pela imagem e pela prévia
 scripts/seed.ts              Dados de exemplo
 src/
   contexts/                  Auth, carrinho, tema, toasts
@@ -137,6 +142,19 @@ CLI: `npx vercel` e depois `npx vercel --prod`.
 CLI: `npx netlify deploy --build` e depois `npx netlify deploy --build --prod`.
 
 O PWA só é instalável em HTTPS (ou `localhost`). Vercel e Netlify já servem com HTTPS.
+
+## Compartilhamento e prévia dos links
+
+- **Botão "Compartilhar"** (Perfil, lista de produtos, página do produto e loja do vendedor): WhatsApp, Facebook, **imagem vertical para os Stories do Instagram** (o link é copiado junto, para o adesivo de link), link para a bio, copiar link e o menu de compartilhamento do celular. Cada link leva `?origem=whatsapp|facebook|instagram`, o que alimenta a tela de Visitas.
+- **Prévia bonita (Open Graph):** os robôs do Facebook, WhatsApp, Telegram etc. não executam JavaScript. Na Vercel, o `middleware.ts` identifica esses robôs e coloca no HTML o título, a descrição (preço, pedido mínimo, cores, vendedor) e a imagem do card gerada por `/api/og`. Para o WhatsApp, que costuma ignorar imagens pesadas, a imagem usada é a própria foto do produto. Visitantes humanos recebem o site normal, sem atraso extra.
+- **Só funciona com o app publicado na Vercel**, porque as redes precisam acessar o link pela internet. Em `npm run dev`, o `/api/og` também funciona (plugin no `vite.config.ts`) para você ver o card. Depois de publicar, teste em [developers.facebook.com/tools/debug](https://developers.facebook.com/tools/debug/) (o botão "Scrape Again" atualiza a prévia em cache).
+
+## Visitas
+
+- A loja e as páginas de produto registram cada visita pela função `fertex_registrar_visita`. **O IP é lido no servidor** (cabeçalho `cf-connecting-ip` do Supabase), não no navegador. Visitas de vendedores não contam, e repetições do mesmo visitante na mesma página em 30 minutos também não.
+- **Localização aproximada:** cada IP novo é consultado uma única vez em [freeipapi.com](https://freeipapi.com) (plano gratuito: uso comercial permitido, 60 consultas/min). A consulta sai do próprio banco via extensão `pg_net`, e o resultado fica em `fertex_ip_geo`.
+- **Tela Visitas** (vendedor; no celular, pelo atalho no Painel): visitas, pessoas únicas, cidades, gráfico por dia, de onde vieram (Instagram, Facebook, WhatsApp, link direto, outros), cidades, produtos mais vistos e as últimas visitas com o **IP parcialmente oculto**.
+- **LGPD:** a loja mostra um aviso de que a página, a origem e a cidade (pelo IP) são registradas para estatísticas. As visitas com mais de 1 ano são apagadas automaticamente. As tabelas não são acessíveis pela API (RLS sem policies); só as funções leem os dados.
 
 ## Segurança (RLS)
 

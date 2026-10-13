@@ -7,6 +7,8 @@ export interface NavItem {
   label: string
   icon: LucideIcon
   badge?: number
+  /** só no menu lateral (a barra inferior do celular comporta 5 itens) */
+  soDesktop?: boolean
 }
 
 interface Props {
@@ -83,7 +85,7 @@ export function AppLayout({ items, headerActions, sidebarFooter }: Props) {
           aria-label="Navegação principal"
         >
           <ul className="flex">
-            {items.map(({ to, label, icon: Icon, badge }) => (
+            {items.filter((i) => !i.soDesktop).map(({ to, label, icon: Icon, badge }) => (
               <li key={to} className="flex-1">
                 <NavLink
                   to={to}
