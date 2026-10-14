@@ -6,6 +6,9 @@ import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { mensagemErro } from '@/lib/errors'
 import { cancelarPedido, concluirPedido, listarPedidosRecebidos, STATUS_PEDIDO } from '@/lib/pedidos'
+import { formatarPagamento, normalizarPrazo, temPrazo, validarPagamento } from '@/lib/pagamento'
+import type { FormaPagamento, Pagamento } from '@/lib/pagamento'
+import { CampoPagamento } from '@/components/CampoPagamento'
 import type { PedidoRecebido } from '@/lib/pedidos'
 import { codigoPedido } from '@/lib/whatsapp'
 import { formatarDataHora, formatarMoeda } from '@/lib/format'
@@ -33,6 +36,8 @@ export default function PedidosRecebidosPage() {
   const aba = (ABAS.find((a) => a.valor === params.get('status'))?.valor ?? 'pendente') as StatusPedido
   const { data, loading, error, reload, setData } = useAsync(listarPedidosRecebidos, [])
   const [acao, setAcao] = useState<Acao | null>(null)
+  const [pagamento, setPagamento] = useState<Pagamento>({ forma: '', prazo: '' })
+  const [erroPagamento, setErroPagamento] = useState<string | null>(null)
   const [processando, setProcessando] = useState(false)
 
   const contagem = useMemo(() => {
@@ -42,14 +47,37 @@ export default function PedidosRecebidosPage() {
   }, [data])
   const lista = (data ?? []).filter((p) => p.status === aba)
 
+  function abrir(a: Acao) {
+    setPagamento({ forma: '', prazo: '' })
+    setErroPagamento(null)
+    setAcao(a)
+  }
+
   async function confirmar() {
     if (!acao) return
+    if (acao.tipo === 'vender') {
+      const problema = validarPagamento(pagamento)
+      setErroPagamento(problema)
+      if (problema) return // mantém o diálogo aberto
+    }
     setProcessando(true)
     try {
-      if (acao.tipo === 'vender') await concluirPedido(acao.pedido.id)
+      if (acao.tipo === 'vender')
+        await concluirPedido(
+          acao.pedido.id,
+          pagamento.forma as FormaPagamento,
+          temPrazo(pagamento.forma) ? normalizarPrazo(pagamento.prazo) : null,
+        )
       else await cancelarPedido(acao.pedido.id)
       const novoStatus: StatusPedido = acao.tipo === 'vender' ? 'concluido' : 'cancelado'
-      setData((l) => l?.map((p) => (p.id === acao.pedido.id ? { ...p, status: novoStatus } : p)))
+      const prazo = acao.tipo === 'vender' && temPrazo(pagamento.forma) ? normalizarPrazo(pagamento.prazo) : null
+      setData((l) =>
+        l?.map((p) =>
+          p.id === acao.pedido.id
+            ? { ...p, status: novoStatus, ...(acao.tipo === 'vender' ? { forma_pagamento: pagamento.forma as FormaPagamento, prazo_pagamento: prazo } : {}) }
+            : p,
+        ),
+      )
       toast(acao.tipo === 'vender' ? `Pedido #${codigoPedido(acao.pedido.id)} marcado como vendido. Estoque atualizado.` : 'Pedido cancelado.')
       window.dispatchEvent(new Event(EVENTO_PEDIDOS))
     } catch (e) {
@@ -143,16 +171,19 @@ export default function PedidosRecebidosPage() {
                   <span className="font-bold">Total {formatarMoeda(p.total)}</span>
                   {p.status === 'pendente' && (
                     <div className="flex gap-2">
-                      <Button variant="secondary" className="px-3 py-2" onClick={() => setAcao({ tipo: 'cancelar', pedido: p })}>
+                      <Button variant="secondary" className="px-3 py-2" onClick={() => abrir({ tipo: 'cancelar', pedido: p })}>
                         <X className="h-4 w-4" aria-hidden /> Cancelar
                       </Button>
-                      <Button className="px-3 py-2" onClick={() => setAcao({ tipo: 'vender', pedido: p })} disabled={faltaEstoque}>
+                      <Button className="px-3 py-2" onClick={() => abrir({ tipo: 'vender', pedido: p })} disabled={faltaEstoque}>
                         <Check className="h-4 w-4" aria-hidden /> Marcar como vendido
                       </Button>
                     </div>
                   )}
                   {p.status === 'concluido' && p.concluido_em && (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Vendido em {formatarDataHora(p.concluido_em)}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Vendido em {formatarDataHora(p.concluido_em)}
+                      {p.forma_pagamento && ` · ${formatarPagamento(p.forma_pagamento, p.prazo_pagamento)}`}
+                    </span>
                   )}
                 </div>
                 {faltaEstoque && (
@@ -176,10 +207,20 @@ export default function PedidosRecebidosPage() {
         onCancel={() => setAcao(null)}
       >
         {acao?.tipo === 'vender' ? (
-          <p>
-            O estoque dos produtos será baixado e a venda de <strong>{acao && formatarMoeda(acao.pedido.total)}</strong> entra no painel e em
-            "Produtos vendidos".
-          </p>
+          <div className="space-y-4">
+            <p>
+              O estoque dos produtos será baixado e a venda de <strong>{acao && formatarMoeda(acao.pedido.total)}</strong> entra no painel e
+              em "Produtos vendidos".
+            </p>
+            <CampoPagamento
+              valor={pagamento}
+              onChange={(v) => {
+                setPagamento(v)
+                setErroPagamento(null)
+              }}
+              erro={erroPagamento}
+            />
+          </div>
         ) : (
           <p>O pedido #{acao && codigoPedido(acao.pedido.id)} será cancelado. O estoque não é alterado.</p>
         )}

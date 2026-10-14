@@ -1,5 +1,5 @@
 import type { ItemCarrinho } from '@/contexts/CartContext'
-import type { OrigemPedido, StatusPedido, Unidade } from '@db/schema'
+import type { FormaPagamento, OrigemPedido, StatusPedido, Unidade } from '@db/schema'
 import { supabase } from './supabase'
 
 /** Rótulo e cores de cada situação do pedido */
@@ -21,6 +21,8 @@ export interface Venda {
   quantidade: number
   unidade: Unidade
   cor: string | null
+  forma_pagamento: FormaPagamento | null
+  prazo_pagamento: string | null
   preco_unitario: number
   total: number
 }
@@ -43,6 +45,8 @@ export async function registrarVenda(input: {
   clienteNome?: string
   precoUnitario?: number
   cor?: string | null
+  formaPagamento: FormaPagamento
+  prazoPagamento?: string | null
 }) {
   const { data, error } = await supabase.rpc('fertex_registrar_venda', {
     p_produto_id: input.produtoId,
@@ -50,6 +54,8 @@ export async function registrarVenda(input: {
     p_cliente_nome: input.clienteNome?.trim() || null,
     p_preco_unitario: input.precoUnitario ?? null,
     p_cor: input.cor ?? null,
+    p_forma_pagamento: input.formaPagamento,
+    p_prazo_pagamento: input.prazoPagamento || null,
   })
   if (error) throw error
   return data as string
@@ -114,6 +120,8 @@ export interface PedidoRecebido {
   observacao: string | null
   criado_em: string
   concluido_em: string | null
+  forma_pagamento: FormaPagamento | null
+  prazo_pagamento: string | null
   comprador_nome: string | null
   itens: (ItemDoPedido & { estoque: number; excluido: boolean })[]
 }
@@ -131,8 +139,12 @@ export async function contarPedidosPendentes() {
   return ((data ?? []) as unknown[]).length
 }
 
-export async function concluirPedido(id: string) {
-  const { error } = await supabase.rpc('fertex_concluir_pedido', { p_pedido_id: id })
+export async function concluirPedido(id: string, formaPagamento: FormaPagamento, prazoPagamento?: string | null) {
+  const { error } = await supabase.rpc('fertex_concluir_pedido', {
+    p_pedido_id: id,
+    p_forma_pagamento: formaPagamento,
+    p_prazo_pagamento: prazoPagamento || null,
+  })
   if (error) throw error
 }
 

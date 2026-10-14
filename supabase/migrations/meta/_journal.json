@@ -176,6 +176,20 @@
       "when": 1791911083017,
       "tag": "0024_whatsapp_publico",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791975701349,
+      "tag": "0025_forma_pagamento",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791975805831,
+      "tag": "0026_funcoes_pagamento",
+      "breakpoints": true
     }
   ]
 }

@@ -45,6 +45,8 @@ supabase/migrations/         Migrations SQL (geradas pelo Drizzle + customizadas
   0022_gps.sql               Localização do aparelho nas visitas + cache de endereços
   0023_funcoes_gps.sql       Registro do GPS, bairro/cidade via OpenStreetMap e estatísticas
   0024_whatsapp_publico.sql  WhatsApp do vendedor público (loja, botão flutuante e imagens)
+  0025_forma_pagamento.sql   Forma de pagamento e prazo no pedido
+  0026_funcoes_pagamento.sql Registrar venda e marcar como vendido exigem a forma de pagamento
 api/og.ts                    Imagem do card de compartilhamento (Vercel Edge Function)
 api/preview.ts               HTML com a prévia dos links (Open Graph) para robôs do Facebook/WhatsApp
 edge/preview.ts              Monta título, descrição e imagem da prévia
@@ -154,6 +156,10 @@ O PWA só é instalável em HTTPS (ou `localhost`). Vercel e Netlify já servem 
 - **Botão "Compartilhar"** (Perfil, lista de produtos, página do produto e loja do vendedor): WhatsApp (conversas, com prévia do link), **Status do WhatsApp** (imagem vertical com o link na legenda), Facebook (no celular pelo menu de compartilhar do aparelho, porque o app do Facebook ignora o link de compartilhamento), **imagem vertical para os Stories do Instagram** (o link é copiado junto, para o adesivo de link), link para a bio, copiar link e o menu de compartilhamento do celular. Cada link leva `?origem=whatsapp|facebook|instagram`, o que alimenta a tela de Visitas.
 - **Prévia bonita (Open Graph):** os robôs do Facebook, WhatsApp, Telegram etc. não executam JavaScript. Na Vercel, regras do `vercel.json` (condição `has` no user-agent) mandam só esses robôs para `/api/preview`, que coloca no HTML o título, a descrição (preço, pedido mínimo, cores, vendedor) e a imagem do card gerada por `/api/og`. Para o WhatsApp, que costuma ignorar imagens pesadas, vai a mesma arte em versão leve (`&tamanho=leve`, 600×315, cerca de 300 KB). Visitantes humanos recebem o site normal, sem passar por nenhum código.
 - **Só funciona com o app publicado na Vercel**, porque as redes precisam acessar o link pela internet. Em `npm run dev`, o `/api/og` também funciona (plugin no `vite.config.ts`) para você ver o card. Depois de publicar, teste em [developers.facebook.com/tools/debug](https://developers.facebook.com/tools/debug/) (o botão "Scrape Again" atualiza a prévia em cache).
+
+## Forma de pagamento
+
+Toda venda guarda a **forma de pagamento**: Pix, Dinheiro, Boleto ou Cheque. A escolha é obrigatória em "Registrar venda" e em "Marcar como vendido". Para **Boleto e Cheque** aparece o campo **prazo em dias**, com um prazo (`30`) ou parcelas (`30/60/90`); o banco aceita "30 60 90" ou "30,60,90" e salva como `30/60/90` (`fertex_normalizar_prazo`). A forma aparece em "Produtos vendidos" (cartões e coluna "Pagamento") e nos pedidos vendidos. Vendas antigas aparecem como "Pagamento não informado".
 
 ## Contato pelo WhatsApp sem conta
 

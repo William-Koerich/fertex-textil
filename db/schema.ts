@@ -28,6 +28,9 @@ export const statusPedidoEnum = pgEnum('fertex_status_pedido', ['pendente', 'con
 /** loja: compra concluída no app · manual: venda registrada pelo vendedor · whatsapp: pedido enviado pelo comprador e confirmado pelo vendedor */
 export const origemPedidoEnum = pgEnum('fertex_origem_pedido', ['loja', 'manual', 'whatsapp'])
 
+/** Forma de pagamento da venda */
+export const formaPagamentoEnum = pgEnum('fertex_forma_pagamento', ['pix', 'dinheiro', 'boleto', 'cheque'])
+
 /** Unidade de medida em que o produto é vendido (preço e estoque são por esta unidade) */
 export const unidadeEnum = pgEnum('fertex_unidade', ['kg', 'litro', 'saco', 'unidade', 'caixa', 'rolo', 'metro'])
 
@@ -139,10 +142,17 @@ export const pedidos = pgTable(
     /** observação do comprador no pedido pelo WhatsApp */
     observacao: text('observacao'),
     criado_em: criadoEm(),
+    forma_pagamento: formaPagamentoEnum('forma_pagamento'),
+    /** prazo do boleto/cheque, em dias: "30", "30/60/90" */
+    prazo_pagamento: text('prazo_pagamento'),
     /** quando a venda foi concluída (pedido pelo WhatsApp: quando o vendedor marcou como vendido) */
     concluido_em: timestamp('concluido_em', { withTimezone: true, mode: 'string' }),
   },
   (t) => [
+    check(
+      'fertex_pedidos_prazo_check',
+      sql`${t.prazo_pagamento} is null or (${t.forma_pagamento} in ('boleto', 'cheque') and ${t.prazo_pagamento} ~ '^[0-9]{1,3}(/[0-9]{1,3}){0,11}$')`,
+    ),
     check('fertex_pedidos_origem_check', sql`${t.comprador_id} is not null or ${t.origem} = 'manual'`),
     index('fertex_pedidos_status_idx').on(t.status),
     index('fertex_pedidos_comprador_idx').on(t.comprador_id, t.criado_em),
@@ -261,6 +271,7 @@ export const geoCoordenadas = pgTable(
 
 export type Perfil = (typeof perfilEnum.enumValues)[number]
 export type StatusPedido = (typeof statusPedidoEnum.enumValues)[number]
+export type FormaPagamento = (typeof formaPagamentoEnum.enumValues)[number]
 export type Unidade = (typeof unidadeEnum.enumValues)[number]
 export type OrigemPedido = (typeof origemPedidoEnum.enumValues)[number]
 export type Profile = typeof profiles.$inferSelect

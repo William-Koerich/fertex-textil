@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { HandCoins, Receipt } from 'lucide-react'
+import { HandCoins, Receipt, Wallet } from 'lucide-react'
+import { formatarPagamento } from '@/lib/pagamento'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAsync } from '@/lib/useAsync'
 import { listarVendas } from '@/lib/pedidos'
@@ -28,6 +29,17 @@ function Cliente({ v }: { v: Venda }) {
           {v.origem === 'manual' ? 'Venda direta' : 'WhatsApp'}
         </span>
       )}
+    </span>
+  )
+}
+
+/** Forma de pagamento da venda ("Boleto 30/60/90 dias"); vendas antigas sem a informação mostram "—" */
+function Pagamento({ v }: { v: Venda }) {
+  if (!v.forma_pagamento) return <span className="text-slate-400 dark:text-slate-500">Pagamento não informado</span>
+  return (
+    <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+      <Wallet className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+      {formatarPagamento(v.forma_pagamento, v.prazo_pagamento)}
     </span>
   )
 }
@@ -142,6 +154,9 @@ export default function VendasPage() {
                 <p className="mt-1 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                   <Cliente v={v} />
                 </p>
+                <p className="mt-1 text-sm">
+                  <Pagamento v={v} />
+                </p>
               </li>
             ))}
           </ul>
@@ -155,6 +170,7 @@ export default function VendasPage() {
                   <th scope="col" className="px-4 py-3">Data</th>
                   <th scope="col" className="px-4 py-3">Produto</th>
                   <th scope="col" className="px-4 py-3">Comprador</th>
+                  <th scope="col" className="px-4 py-3">Pagamento</th>
                   <th scope="col" className="px-4 py-3 text-right">Qtd.</th>
                   <th scope="col" className="px-4 py-3 text-right">Preço unit.</th>
                   <th scope="col" className="px-4 py-3 text-right">Total</th>
@@ -171,6 +187,9 @@ export default function VendasPage() {
                     <td className="px-4 py-3">
                       <Cliente v={v} />
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <Pagamento v={v} />
+                    </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{formatarQuantidade(v.quantidade, v.unidade)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{formatarPrecoPor(Number(v.preco_unitario), v.unidade)}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatarMoeda(Number(v.total))}</td>
@@ -179,7 +198,7 @@ export default function VendasPage() {
               </tbody>
               <tfoot className="border-t-2 border-slate-200 bg-slate-50 font-semibold dark:border-slate-700 dark:bg-slate-800/50">
                 <tr>
-                  <td className="px-4 py-3" colSpan={3}>
+                  <td className="px-4 py-3" colSpan={4}>
                     Total do período ({formatarNumero(totais.pedidos)} {totais.pedidos === 1 ? 'pedido' : 'pedidos'})
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatarNumero(totais.quantidade)}</td>

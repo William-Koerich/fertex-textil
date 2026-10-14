@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/States'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { CampoPagamento } from '@/components/CampoPagamento'
+import { normalizarPrazo, temPrazo, validarPagamento } from '@/lib/pagamento'
+import type { FormaPagamento, Pagamento } from '@/lib/pagamento'
 import { formatarPrecoPor, formatarQuantidade, siglaUnidade } from '@/lib/unidades'
 
 interface Props {
@@ -31,6 +34,8 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
   const [preco, setPreco] = useState('')
   const [cliente, setCliente] = useState('')
   const [cor, setCor] = useState('')
+  const [pagamento, setPagamento] = useState<Pagamento>({ forma: '', prazo: '' })
+  const [erroPagamento, setErroPagamento] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [erroPreco, setErroPreco] = useState<string>()
   const [enviando, setEnviando] = useState(false)
@@ -47,6 +52,8 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
       setPreco(produto ? precoTexto(produto.preco) : '')
       setCliente('')
       setCor('')
+      setPagamento({ forma: '', prazo: '' })
+      setErroPagamento(null)
       setErro(null)
       setErroPreco(undefined)
       if (!d.open) d.showModal()
@@ -60,11 +67,22 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
     e.preventDefault()
     if (!selecionado) return setErro('Escolha o produto vendido.')
     if (selecionado.cores?.length && !cor) return setErro('Escolha a cor vendida.')
+    const problemaPagamento = validarPagamento(pagamento)
+    setErroPagamento(problemaPagamento)
+    if (problemaPagamento) return
     if (Number.isNaN(precoNum) || precoNum < 0) return setErroPreco('Preço inválido. Use o formato 49,90.')
     setErro(null)
     setEnviando(true)
     try {
-      await registrarVenda({ produtoId: selecionado.id, quantidade, clienteNome: cliente, precoUnitario: precoNum, cor: cor || null })
+      await registrarVenda({
+        produtoId: selecionado.id,
+        quantidade,
+        clienteNome: cliente,
+        precoUnitario: precoNum,
+        cor: cor || null,
+        formaPagamento: pagamento.forma as FormaPagamento,
+        prazoPagamento: temPrazo(pagamento.forma) ? normalizarPrazo(pagamento.prazo) : null,
+      })
       onRegistrada(selecionado, quantidade)
     } catch (err) {
       setErro(mensagemErro(err, 'Não foi possível registrar a venda. Tente novamente.'))
@@ -159,6 +177,14 @@ export function RegistrarVendaDialog({ open, produto, produtos = [], onClose, on
                 ))}
               </Select>
             )}
+            <CampoPagamento
+              valor={pagamento}
+              onChange={(v) => {
+                setPagamento(v)
+                setErroPagamento(null)
+              }}
+              erro={erroPagamento}
+            />
             <Input
               label="Cliente (opcional)"
               placeholder="Nome de quem comprou"
