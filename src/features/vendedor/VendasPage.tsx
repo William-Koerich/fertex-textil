@@ -43,8 +43,11 @@ function Lucro({ v }: { v: Venda }) {
     )
   const n = Number(v.lucro)
   return (
-    <span className={`text-xs font-semibold whitespace-nowrap ${n < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
-      {v.tipo_ganho === 'comissao' ? 'comissão ' : 'lucro '}
+    // Só o valor: verde = lucro (ou comissão), vermelho = prejuízo
+    <span
+      title={n < 0 ? 'Prejuízo' : v.tipo_ganho === 'comissao' ? 'Comissão' : 'Lucro'}
+      className={`text-xs font-semibold whitespace-nowrap ${n < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}
+    >
       {formatarMoeda(n)}
     </span>
   )
@@ -229,7 +232,9 @@ export default function VendasPage() {
                   <td className="px-4 py-3 text-right tabular-nums">{formatarNumero(totais.quantidade)}</td>
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3 text-right tabular-nums">{formatarMoeda(totais.valor)}</td>
-                  <td className="px-4 py-3 text-right text-emerald-700 tabular-nums dark:text-emerald-400">{formatarMoeda(totais.lucro)}</td>
+                  <td className={`px-4 py-3 text-right tabular-nums ${totais.lucro < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                    {formatarMoeda(totais.lucro)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -243,7 +248,12 @@ export default function VendasPage() {
               </span>
               <span className="text-right">
                 <span className="block text-lg leading-tight font-bold">{formatarMoeda(totais.valor)}</span>
-                <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400">lucro {formatarMoeda(totais.lucro)}</span>
+                <span
+                  title={totais.lucro < 0 ? 'Prejuízo' : 'Lucro'}
+                  className={`block text-xs font-semibold ${totais.lucro < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}
+                >
+                  {formatarMoeda(totais.lucro)}
+                </span>
               </span>
             </div>
           </div>
