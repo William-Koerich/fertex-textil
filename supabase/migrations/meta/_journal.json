@@ -190,6 +190,20 @@
       "when": 1791975805831,
       "tag": "0026_funcoes_pagamento",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792323994823,
+      "tag": "0027_custos",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792324035376,
+      "tag": "0028_funcoes_lucro",
+      "breakpoints": true
     }
   ]
 }

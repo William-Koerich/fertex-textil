@@ -28,6 +28,9 @@ export const statusPedidoEnum = pgEnum('fertex_status_pedido', ['pendente', 'con
 /** loja: compra concluída no app · manual: venda registrada pelo vendedor · whatsapp: pedido enviado pelo comprador e confirmado pelo vendedor */
 export const origemPedidoEnum = pgEnum('fertex_origem_pedido', ['loja', 'manual', 'whatsapp'])
 
+/** Como o vendedor ganha no produto: revenda (compra e revende) ou comissão (% sobre a venda) */
+export const tipoGanhoEnum = pgEnum('fertex_tipo_ganho', ['revenda', 'comissao'])
+
 /** Forma de pagamento da venda */
 export const formaPagamentoEnum = pgEnum('fertex_forma_pagamento', ['pix', 'dinheiro', 'boleto', 'cheque'])
 
@@ -203,6 +206,61 @@ export const itensPedido = pgTable(
 ).enableRLS()
 
 /**
+ * Custo / comissão do produto: PRIVADO do vendedor (a tabela de produtos é pública para a vitrine,
+ * então o valor de compra fica separado e só o dono do produto lê e altera).
+ */
+export const produtosCustos = pgTable(
+  'fertex_produtos_custos',
+  {
+    produto_id: uuid('produto_id')
+      .primaryKey()
+      .references(() => produtos.id, { onDelete: 'cascade' }),
+    tipo_ganho: tipoGanhoEnum('tipo_ganho').notNull(),
+    /** preço de compra por unidade do produto (revenda) */
+    preco_custo: numeric('preco_custo', { precision: 12, scale: 2, mode: 'number' }),
+    /** % de comissão sobre o valor da venda (comissão) */
+    comissao_percentual: numeric('comissao_percentual', { precision: 5, scale: 2, mode: 'number' }),
+    atualizado_em: timestamp('atualizado_em', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      'fertex_produtos_custos_check',
+      sql`(${t.tipo_ganho} = 'revenda' and ${t.preco_custo} >= 0 and ${t.comissao_percentual} is null)
+        or (${t.tipo_ganho} = 'comissao' and ${t.comissao_percentual} > 0 and ${t.comissao_percentual} <= 100 and ${t.preco_custo} is null)`,
+    ),
+    pgPolicy('fertex_produtos_custos_dono', {
+      for: 'all',
+      to: authenticatedRole,
+      using: sql`exists (select 1 from fertex_produtos p where p.id = produto_id and p.vendedor_id = ${authUid})`,
+      withCheck: sql`exists (select 1 from fertex_produtos p where p.id = produto_id and p.vendedor_id = ${authUid})`,
+    }),
+  ],
+).enableRLS()
+
+/**
+ * Custo / comissão no momento da venda (por item), para o lucro não mudar se o custo do produto mudar depois.
+ * Preenchido por trigger; PRIVADO do vendedor (o comprador lê os itens do próprio pedido, mas não esta tabela).
+ */
+export const itensCustos = pgTable(
+  'fertex_itens_custos',
+  {
+    item_id: uuid('item_id')
+      .primaryKey()
+      .references(() => itensPedido.id, { onDelete: 'cascade' }),
+    tipo_ganho: tipoGanhoEnum('tipo_ganho').notNull(),
+    custo_unitario: numeric('custo_unitario', { precision: 12, scale: 2, mode: 'number' }),
+    comissao_percentual: numeric('comissao_percentual', { precision: 5, scale: 2, mode: 'number' }),
+  },
+  () => [
+    pgPolicy('fertex_itens_custos_vendedor', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`exists (select 1 from fertex_itens_pedido i where i.id = item_id and i.vendedor_id = ${authUid})`,
+    }),
+  ],
+).enableRLS()
+
+/**
  * Visitas à loja/produtos (estatísticas do vendedor). Gravadas só pela função fertex_registrar_visita,
  * que captura o IP no servidor. Sem policies: ninguém lê/escreve direto (RLS ativo).
  */
@@ -271,6 +329,8 @@ export const geoCoordenadas = pgTable(
 
 export type Perfil = (typeof perfilEnum.enumValues)[number]
 export type StatusPedido = (typeof statusPedidoEnum.enumValues)[number]
+export type TipoGanho = (typeof tipoGanhoEnum.enumValues)[number]
+export type ProdutoCusto = typeof produtosCustos.$inferSelect
 export type FormaPagamento = (typeof formaPagamentoEnum.enumValues)[number]
 export type Unidade = (typeof unidadeEnum.enumValues)[number]
 export type OrigemPedido = (typeof origemPedidoEnum.enumValues)[number]

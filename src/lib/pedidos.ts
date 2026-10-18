@@ -23,6 +23,10 @@ export interface Venda {
   cor: string | null
   forma_pagamento: FormaPagamento | null
   prazo_pagamento: string | null
+  /** revenda ou comissão (null se o produto não tem custo informado) */
+  tipo_ganho: 'revenda' | 'comissao' | null
+  /** lucro do item (null se o produto não tem custo/comissão informados) */
+  lucro: number | null
   preco_unitario: number
   total: number
 }

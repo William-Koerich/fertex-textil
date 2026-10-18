@@ -1,8 +1,11 @@
-import type { Produto } from '@db/schema'
+import type { Produto, ProdutoCusto, TipoGanho } from '@db/schema'
 import { BUCKET_PRODUTOS, supabase } from './supabase'
 import { redimensionarImagem } from './imagem'
 
-export type { Produto }
+export type { Produto, ProdutoCusto, TipoGanho }
+
+/** Produto com o custo/comissão (privado, só para o vendedor dono) */
+export type ProdutoComCusto = Produto & { custo: ProdutoCusto | null }
 
 export const CATEGORIAS_SUGERIDAS = [
   'Tecidos',
@@ -25,12 +28,33 @@ export type ProdutoInput = Pick<Produto, 'nome' | 'descricao' | 'preco' | 'estoq
 export async function listarMeusProdutos(vendedorId: string) {
   const { data, error } = await supabase
     .from('fertex_produtos')
-    .select('*')
+    .select('*, custo:fertex_produtos_custos(*)')
     .eq('vendedor_id', vendedorId)
     .is('excluido_em', null)
     .order('criado_em', { ascending: false })
   if (error) throw error
-  return data as Produto[]
+  return data as ProdutoComCusto[]
+}
+
+/** Custo/comissão do produto (só o vendedor dono consegue ler) */
+export async function buscarCusto(produtoId: string) {
+  const { data, error } = await supabase.from('fertex_produtos_custos').select('*').eq('produto_id', produtoId).maybeSingle()
+  if (error) throw error
+  return data as ProdutoCusto | null
+}
+
+export async function salvarCusto(produtoId: string, c: { tipo_ganho: TipoGanho; preco_custo: number | null; comissao_percentual: number | null }) {
+  const { error } = await supabase
+    .from('fertex_produtos_custos')
+    .upsert({ produto_id: produtoId, ...c, atualizado_em: new Date().toISOString() }, { onConflict: 'produto_id' })
+  if (error) throw error
+}
+
+/** Ganho por unidade vendida: revenda = preço − custo; comissão = preço × %. null se não informado. */
+export function ganhoPorUnidade(preco: number, c: Pick<ProdutoCusto, 'tipo_ganho' | 'preco_custo' | 'comissao_percentual'> | null) {
+  if (!c) return null
+  if (c.tipo_ganho === 'revenda') return c.preco_custo == null ? null : preco - c.preco_custo
+  return c.comissao_percentual == null ? null : (preco * c.comissao_percentual) / 100
 }
 
 export async function buscarProduto(id: string) {

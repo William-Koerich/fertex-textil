@@ -9,6 +9,12 @@ export interface Dashboard {
   faturamento_mes: number
   faturamento_periodo: number
   faturamento_periodo_anterior: number
+  /** lucro: revenda (preço − custo) + comissões; vendas sem custo informado não entram */
+  lucro_total: number
+  lucro_mes: number
+  lucro_periodo: number
+  lucro_periodo_anterior: number
+  itens_sem_custo_periodo: number
   vendas_periodo: number
   vendas_periodo_anterior: number
   itens_periodo: number

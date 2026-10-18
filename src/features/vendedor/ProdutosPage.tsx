@@ -5,8 +5,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { mensagemErro } from '@/lib/errors'
-import { ESTOQUE_BAIXO, excluirProduto, listarMeusProdutos } from '@/lib/produtos'
-import type { Produto } from '@/lib/produtos'
+import { ESTOQUE_BAIXO, excluirProduto, ganhoPorUnidade, listarMeusProdutos } from '@/lib/produtos'
+import type { Produto, ProdutoComCusto } from '@/lib/produtos'
 import { formatarNumero } from '@/lib/format'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { buttonClass, IconButton } from '@/components/ui/Button'
@@ -47,6 +47,30 @@ function StatusBadge({ produto }: { produto: Produto }) {
   return (
     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
       Ativo
+    </span>
+  )
+}
+
+/** Quanto o vendedor ganha por unidade (privado): lucro da revenda ou comissão */
+function Ganho({ produto }: { produto: ProdutoComCusto }) {
+  const c = produto.custo
+  if (!c)
+    return (
+      <Link
+        to={`/produtos/${produto.id}/editar`}
+        className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 hover:underline dark:bg-amber-950 dark:text-amber-300"
+      >
+        Informar custo/comissão
+      </Link>
+    )
+  const ganho = ganhoPorUnidade(produto.preco, c)
+  const texto =
+    c.tipo_ganho === 'comissao'
+      ? `Comissão ${String(c.comissao_percentual).replace('.', ',')}% (${formatarPrecoPor(ganho ?? 0, produto.unidade)})`
+      : `Lucro ${formatarPrecoPor(ganho ?? 0, produto.unidade)}`
+  return (
+    <span className={`text-xs font-medium ${ganho != null && ganho < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+      {texto}
     </span>
   )
 }
@@ -154,6 +178,7 @@ export default function ProdutosPage() {
                       {(p.quantidade_minima ?? 1) > 1 && (
                         <span className="text-slate-500 dark:text-slate-400">Mín.: {formatarQuantidade(p.quantidade_minima!, p.unidade)}</span>
                       )}
+                      <Ganho produto={p} />
                       <StatusBadge produto={p} />
                     </div>
                     <button

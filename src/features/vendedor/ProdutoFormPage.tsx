@@ -1,21 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, ImagePlus, Plus, Trash, X } from 'lucide-react'
+import { ArrowLeft, ImagePlus, Lock, Plus, Trash, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAsync } from '@/lib/useAsync'
 import { mensagemErro } from '@/lib/errors'
-import { parseMoeda } from '@/lib/format'
+import { formatarMoeda, parseMoeda } from '@/lib/format'
 import {
   atualizarProduto,
+  buscarCusto,
+  salvarCusto,
   buscarProduto,
   CATEGORIAS_SUGERIDAS,
   criarProduto,
   enviarFoto,
   removerFoto,
 } from '@/lib/produtos'
-import type { Produto } from '@/lib/produtos'
+import type { Produto, TipoGanho } from '@/lib/produtos'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button, buttonClass } from '@/components/ui/Button'
 import { Input, inputClass, Select, Textarea } from '@/components/ui/Field'
@@ -37,10 +39,14 @@ interface Form {
   cores: string[]
   categoria: string
   ativo: boolean
+  /** como o vendedor ganha: revenda (preço de compra) ou comissão (%) — dado privado */
+  ganho: TipoGanho | ''
+  custo: string
+  comissao: string
 }
 type Erros = Partial<Record<keyof Form | 'foto', string>>
 
-const vazio: Form = { nome: '', descricao: '', preco: '', estoque: '0', unidade: '', minimo: '', cores: [], categoria: '', ativo: true }
+const vazio: Form = { nome: '', descricao: '', preco: '', estoque: '0', unidade: '', minimo: '', cores: [], categoria: '', ativo: true, ganho: '', custo: '', comissao: '' }
 
 function paraForm(p: Produto): Form {
   return {
@@ -53,7 +59,18 @@ function paraForm(p: Produto): Form {
     cores: p.cores ?? [],
     categoria: p.categoria,
     ativo: p.ativo,
+    ganho: '',
+    custo: '',
+    comissao: '',
   }
+}
+
+const decimal = (v: number) => v.toFixed(2).replace('.', ',')
+
+/** "5" | "5,5" | "5.5" → 5.5 (NaN se inválido) */
+const parsePercentual = (t: string) => {
+  const v = t.trim().replace(',', '.')
+  return /^\d{1,3}(\.\d{1,2})?$/.test(v) ? Number(v) : NaN
 }
 
 function validar(f: Form): Erros {
@@ -74,7 +91,105 @@ function validar(f: Form): Erros {
     e.minimo = 'Informe um número inteiro maior que zero, ou deixe em branco.'
   else if (Number(f.minimo) > 1_000_000) e.minimo = 'Quantidade mínima muito alta.'
   if (!f.categoria.trim()) e.categoria = 'Informe a categoria.'
+  if (!f.ganho) e.ganho = 'Informe como você ganha neste produto: revenda ou comissão.'
+  else if (f.ganho === 'revenda') {
+    const custo = parseMoeda(f.custo)
+    if (!f.custo.trim()) e.custo = 'Informe o preço de compra.'
+    else if (Number.isNaN(custo) || custo < 0) e.custo = 'Preço de compra inválido. Use o formato 8,00.'
+  } else {
+    const pct = parsePercentual(f.comissao)
+    if (!f.comissao.trim()) e.comissao = 'Informe a porcentagem da comissão.'
+    else if (Number.isNaN(pct) || pct <= 0 || pct > 100) e.comissao = 'Comissão inválida. Use um número entre 0,01 e 100 (ex.: 5 ou 7,5).'
+  }
   return e
+}
+
+/** Como o vendedor ganha no produto: revenda (preço de compra) ou comissão (%). Privado: o cliente não vê. */
+function GanhoEditor({
+  form,
+  erros,
+  set,
+}: {
+  form: Form
+  erros: Erros
+  set: <K extends keyof Form>(k: K, v: Form[K]) => void
+}) {
+  const preco = parseMoeda(form.preco)
+  const sigla = form.unidade ? siglaUnidade(form.unidade) : 'un.'
+  let resumo: string | null = null
+  if (!Number.isNaN(preco) && preco > 0) {
+    if (form.ganho === 'revenda') {
+      const custo = parseMoeda(form.custo)
+      if (!Number.isNaN(custo)) {
+        const lucro = preco - custo
+        resumo = `${lucro >= 0 ? 'Lucro' : 'Prejuízo'} de ${formatarMoeda(Math.abs(lucro))} por ${sigla} (${preco ? ((lucro / preco) * 100).toFixed(1).replace('.', ',') : 0}% do preço de venda)`
+      }
+    } else if (form.ganho === 'comissao') {
+      const pct = parsePercentual(form.comissao)
+      if (!Number.isNaN(pct)) resumo = `Você ganha ${formatarMoeda((preco * pct) / 100)} por ${sigla} vendido`
+    }
+  }
+  const opcoes: { valor: TipoGanho; titulo: string; texto: string }[] = [
+    { valor: 'revenda', titulo: 'Revenda', texto: 'Compro e revendo' },
+    { valor: 'comissao', titulo: 'Comissão', texto: 'Ganho % sobre a venda' },
+  ]
+  return (
+    <fieldset className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <legend className="sr-only">Como você ganha neste produto</legend>
+      <div>
+        <span className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+          <Lock className="h-3.5 w-3.5" aria-hidden /> Como você ganha neste produto
+        </span>
+        <span className="block text-xs text-slate-500 dark:text-slate-400">Só você vê estas informações. Elas calculam o lucro no Painel.</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Como você ganha neste produto">
+        {opcoes.map((o) => {
+          const sel = form.ganho === o.valor
+          return (
+            <button
+              key={o.valor}
+              type="button"
+              role="radio"
+              aria-checked={sel}
+              onClick={() => set('ganho', o.valor)}
+              className={`rounded-lg border-2 px-3 py-2 text-left transition-colors ${
+                sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 hover:border-slate-400 dark:border-slate-700 dark:hover:border-slate-500'
+              }`}
+            >
+              <span className="block text-sm font-semibold">{o.titulo}</span>
+              <span className={`block text-xs ${sel ? 'text-brand-100' : 'text-slate-500 dark:text-slate-400'}`}>{o.texto}</span>
+            </button>
+          )
+        })}
+      </div>
+      {erros.ganho && <p className="text-sm text-red-600 dark:text-red-400">{erros.ganho}</p>}
+      {form.ganho === 'revenda' && (
+        <Input
+          label={`Preço de compra por ${sigla} (R$)`}
+          inputMode="decimal"
+          placeholder="0,00"
+          value={form.custo}
+          onChange={(e) => set('custo', e.target.value.replace(/[^\d.,]/g, ''))}
+          error={erros.custo}
+        />
+      )}
+      {form.ganho === 'comissao' && (
+        <Input
+          label="Comissão sobre o valor da venda (%)"
+          inputMode="decimal"
+          placeholder="Ex.: 5"
+          value={form.comissao}
+          onChange={(e) => set('comissao', e.target.value.replace(/[^\d.,]/g, ''))}
+          error={erros.comissao}
+        />
+      )}
+      {resumo && (
+        <p className={`text-sm font-medium ${resumo.startsWith('Prejuízo') ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+          {resumo}
+        </p>
+      )}
+    </fieldset>
+  )
 }
 
 const MAX_CORES = 50
@@ -158,6 +273,7 @@ export default function ProdutoFormPage() {
 
   const carregamento = useAsync(() => (id ? buscarProduto(id) : Promise.resolve(null)), [id])
   const original = carregamento.data
+  const custoAtual = useAsync(() => (id ? buscarCusto(id) : Promise.resolve(null)), [id])
 
   const [form, setForm] = useState<Form>(vazio)
   const [erros, setErros] = useState<Erros>({})
@@ -169,8 +285,15 @@ export default function ProdutoFormPage() {
   const inputFoto = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (original) setForm(paraForm(original))
-  }, [original])
+    if (!original) return
+    const c = custoAtual.data
+    setForm({
+      ...paraForm(original),
+      ganho: c?.tipo_ganho ?? '',
+      custo: c?.preco_custo != null ? decimal(c.preco_custo) : '',
+      comissao: c?.comissao_percentual != null ? String(c.comissao_percentual).replace('.', ',') : '',
+    })
+  }, [original, custoAtual.data])
 
   useEffect(() => {
     if (!arquivo) return setPreview(null)
@@ -230,8 +353,12 @@ export default function ProdutoFormPage() {
         ativo: form.ativo,
         foto_url,
       }
-      if (id) await atualizarProduto(id, dados)
-      else await criarProduto(profile!.id, dados)
+      const salvo = id ? await atualizarProduto(id, dados) : await criarProduto(profile!.id, dados)
+      await salvarCusto(salvo.id, {
+        tipo_ganho: form.ganho as TipoGanho,
+        preco_custo: form.ganho === 'revenda' ? parseMoeda(form.custo) : null,
+        comissao_percentual: form.ganho === 'comissao' ? parsePercentual(form.comissao) : null,
+      })
       // Apaga a foto antiga se foi trocada ou removida
       if (fotoAtual && fotoAtual !== foto_url) removerFoto(fotoAtual).catch(() => {})
       toast(editando ? 'Produto atualizado.' : 'Produto cadastrado.')
@@ -360,6 +487,7 @@ export default function ProdutoFormPage() {
               error={erros.estoque}
             />
           </div>
+          <GanhoEditor form={form} erros={erros} set={set} />
           <Input
             label={form.unidade ? `Quantidade mínima por pedido (${siglaUnidade(form.unidade)})` : 'Quantidade mínima por pedido'}
             inputMode="numeric"

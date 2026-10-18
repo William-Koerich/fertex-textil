@@ -38,11 +38,28 @@ function Delta({ atual, anterior, dias }: { atual: number; anterior: number; dia
   )
 }
 
-function StatTile({ label, valor, detalhe, children }: { label: string; valor: string; detalhe?: string; children?: ReactNode }) {
+function StatTile({
+  label,
+  valor,
+  detalhe,
+  destaque,
+  children,
+}: {
+  label: string
+  valor: string
+  detalhe?: string
+  destaque?: 'positivo' | 'negativo'
+  children?: ReactNode
+}) {
   return (
     <div className={card}>
       <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-1 truncate text-2xl font-semibold tracking-tight" title={valor}>
+      <p
+        className={`mt-1 truncate text-2xl font-semibold tracking-tight ${
+          destaque === 'positivo' ? 'text-emerald-700 dark:text-emerald-400' : destaque === 'negativo' ? 'text-red-600 dark:text-red-400' : ''
+        }`}
+        title={valor}
+      >
         {valor}
       </p>
       {detalhe && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detalhe}</p>}
@@ -85,7 +102,7 @@ function GraficoFaturamento({ d, dias }: { d: Dashboard; dias: number }) {
             Faturamento por dia
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Últimos {dias} dias · {formatarMoeda(d.faturamento_periodo)}
+            Últimos {dias} dias · {formatarMoeda(d.faturamento_periodo)} em vendas · lucro {formatarMoeda(d.lucro_periodo)}
           </p>
         </div>
         {max && max.faturamento > 0 && (
@@ -282,9 +299,24 @@ export default function DashboardPage() {
       ) : d ? (
         // Ao trocar o período, mantém o conteúdo anterior esmaecido em vez de piscar
         <div className={`space-y-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
+          {d.itens_sem_custo_periodo > 0 && (
+            <Link
+              to="/produtos"
+              className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:underline dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              {formatarNumero(d.itens_sem_custo_periodo)} {d.itens_sem_custo_periodo === 1 ? 'venda' : 'vendas'} dos últimos {dias} dias sem preço de
+              compra ou comissão: não {d.itens_sem_custo_periodo === 1 ? 'entra' : 'entram'} no lucro. Informe em Produtos → Editar.
+            </Link>
+          )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <StatTile label="Faturamento total" valor={formatarMoeda(d.faturamento_total)} detalhe="Desde o início" />
-            <StatTile label="Faturamento do mês" valor={formatarMoeda(d.faturamento_mes)} detalhe={`Em ${formatarMes(d.fim)}`} />
+            <StatTile label="Valor total de vendas" valor={formatarMoeda(d.faturamento_total)} detalhe={`Em ${formatarMes(d.fim)}: ${formatarMoeda(d.faturamento_mes)}`} />
+            <StatTile
+              label="Lucro"
+              valor={formatarMoeda(d.lucro_total)}
+              destaque={d.lucro_total < 0 ? 'negativo' : 'positivo'}
+              detalhe={`Em ${formatarMes(d.fim)}: ${formatarMoeda(d.lucro_mes)}${d.faturamento_total > 0 ? ` · margem ${((d.lucro_total / d.faturamento_total) * 100).toFixed(1).replace('.', ',')}%` : ''}`}
+            />
             <StatTile label="Vendas" valor={formatarNumero(d.vendas_periodo)} detalhe={`Pedidos nos últimos ${dias} dias`}>
               <Delta atual={d.vendas_periodo} anterior={d.vendas_periodo_anterior} dias={dias} />
             </StatTile>

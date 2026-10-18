@@ -34,6 +34,22 @@ function Cliente({ v }: { v: Venda }) {
 }
 
 /** Forma de pagamento da venda ("Boleto 30/60/90 dias"); vendas antigas sem a informação mostram "—" */
+function Lucro({ v }: { v: Venda }) {
+  if (v.lucro == null)
+    return (
+      <span className="text-xs text-amber-700 dark:text-amber-400" title="Informe o preço de compra ou a comissão do produto em Produtos → Editar">
+        sem custo
+      </span>
+    )
+  const n = Number(v.lucro)
+  return (
+    <span className={`text-xs font-semibold whitespace-nowrap ${n < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+      {v.tipo_ganho === 'comissao' ? 'comissão ' : 'lucro '}
+      {formatarMoeda(n)}
+    </span>
+  )
+}
+
 function Pagamento({ v }: { v: Venda }) {
   if (!v.forma_pagamento) return <span className="text-slate-400 dark:text-slate-500">Pagamento não informado</span>
   return (
@@ -65,6 +81,8 @@ export default function VendasPage() {
       // Só soma quantidades no rodapé se todas forem da mesma unidade
       unidade: new Set(lista.map((v) => v.unidade)).size === 1 ? lista[0].unidade : null,
       valor: lista.reduce((s, v) => s + Number(v.total), 0),
+      lucro: lista.reduce((s, v) => s + Number(v.lucro ?? 0), 0),
+      semCusto: lista.filter((v) => v.lucro == null).length,
       pedidos: new Set(lista.map((v) => v.pedido_id)).size,
     }
   }, [vendas.data])
@@ -143,7 +161,10 @@ export default function VendasPage() {
                     {v.produto_nome}
                     {v.cor && <span className="font-normal text-slate-500 dark:text-slate-400"> · {v.cor}</span>}
                   </span>
-                  <span className="font-semibold whitespace-nowrap">{formatarMoeda(Number(v.total))}</span>
+                  <span className="text-right">
+                    <span className="block font-semibold whitespace-nowrap">{formatarMoeda(Number(v.total))}</span>
+                    <Lucro v={v} />
+                  </span>
                 </div>
                 <div className="mt-1 flex justify-between gap-2 text-sm text-slate-500 dark:text-slate-400">
                   <span>
@@ -174,6 +195,7 @@ export default function VendasPage() {
                   <th scope="col" className="px-4 py-3 text-right">Qtd.</th>
                   <th scope="col" className="px-4 py-3 text-right">Preço unit.</th>
                   <th scope="col" className="px-4 py-3 text-right">Total</th>
+                  <th scope="col" className="px-4 py-3 text-right">Lucro</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -193,6 +215,9 @@ export default function VendasPage() {
                     <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{formatarQuantidade(v.quantidade, v.unidade)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{formatarPrecoPor(Number(v.preco_unitario), v.unidade)}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatarMoeda(Number(v.total))}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      <Lucro v={v} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -204,6 +229,7 @@ export default function VendasPage() {
                   <td className="px-4 py-3 text-right tabular-nums">{formatarNumero(totais.quantidade)}</td>
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3 text-right tabular-nums">{formatarMoeda(totais.valor)}</td>
+                  <td className="px-4 py-3 text-right text-emerald-700 tabular-nums dark:text-emerald-400">{formatarMoeda(totais.lucro)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -215,7 +241,10 @@ export default function VendasPage() {
               <span className="text-sm text-slate-500 dark:text-slate-400">
                 Total ({nomePeriodo}) · {formatarNumero(totais.itens)} {totais.itens === 1 ? 'venda' : 'vendas'}
               </span>
-              <span className="text-lg font-bold">{formatarMoeda(totais.valor)}</span>
+              <span className="text-right">
+                <span className="block text-lg leading-tight font-bold">{formatarMoeda(totais.valor)}</span>
+                <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400">lucro {formatarMoeda(totais.lucro)}</span>
+              </span>
             </div>
           </div>
           <div className="h-16 md:hidden" aria-hidden />
