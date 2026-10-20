@@ -36,6 +36,8 @@
             return
           }
           var limpar = []
+          // Força buscar o arquivo de novo, ignorando uma resposta de erro guardada pelo navegador
+          if (window.fetch) limpar.push(fetch(el.src, { cache: 'reload' }).catch(function () {}))
           if (navigator.serviceWorker) limpar.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister() })) }))
           if (window.caches) limpar.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k) })) }))
           Promise.all(limpar).catch(function () {}).then(function () { location.reload() })
